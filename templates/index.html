@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Info Lookup Portal</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h2>🔍 Information Lookup Portal</h2>
+  <select id="type">
+    <option value="vehicle">Vehicle Info</option>
+    <option value="number">Number Info</option>
+    <option value="aadhaar">Aadhaar Info</option>
+  </select>
+
+  <input id="number" placeholder="Enter number..." />
+  <input id="pin" placeholder="Enter PIN..." />
+  <button onclick="search()">Search</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    async function search() {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          type: document.getElementById('type').value,
+          number: document.getElementById('number').value,
+          pin: document.getElementById('pin').value
+        })
+      });
+      document.getElementById('result').textContent = await res.text();
+    }
+  </script>
+</body>
+</html>

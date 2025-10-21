@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+</head>
+<body>
+  <h2>🔐 Admin Login</h2>
+  <input id="username" value="RAHUL">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <pre id="output"></pre>
+
+  <script>
+    async function login() {
+      const res = await fetch('/admin', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value
+        })
+      });
+      document.getElementById('output').textContent = await res.text();
+    }
+  </script>
+</body>
+</html>
