@@ -173,15 +173,38 @@ def search():
 
 # --- Admin routes (registered only if enabled) ---
 if ENABLE_ADMIN_PANEL:
+    def admin_required(f):
+        from functools import wraps
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not session.get('is_admin'):
+                if request.is_json:
+                    return jsonify({"success": False, "error": "Unauthorized"}), 401
+                return redirect(url_for('admin_page'))
+            return f(*args, **kwargs)
+        return decorated_function
+
     @app.route('/admin')
     def admin_page():
+        if session.get('is_admin'):
+            return render_template("admin.html")
         return render_template("admin.html")
 
     @app.route('/admin/login', methods=['POST'])
     def admin_login():
-        data = request.json or {}
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Invalid request format"}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+            
         username = data.get('username')
         password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({"success": False, "error": "Username and password are required"}), 400
+            
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['is_admin'] = True
             # return keys immediately
@@ -192,15 +215,9 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": True, "keys": keys_list})
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
-    def admin_required():
-        if not session.get('is_admin'):
-            return False
-        return True
-
     @app.route('/admin/keys', methods=['GET'])
+    @admin_required
     def admin_get_keys():
-        if not admin_required():
-            return jsonify({"success": False, "error": "Unauthorized"}), 401
         conn = get_db_connection()
         keys_rows = conn.execute("SELECT * FROM keys ORDER BY created_at DESC").fetchall()
         conn.close()
@@ -208,9 +225,8 @@ if ENABLE_ADMIN_PANEL:
         return jsonify({"success": True, "keys": keys_list})
 
     @app.route('/admin/add', methods=['POST'])
+    @admin_required
     def add_key():
-        if not admin_required():
-            return jsonify({"success": False, "error": "Unauthorized"}), 401
         data = request.json or {}
         pin = data.get('pin')
         limit = data.get('limit', 10)
@@ -227,9 +243,8 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": False, "error": "This PIN already exists."}), 409
 
     @app.route('/admin/delete', methods=['POST'])
+    @admin_required
     def delete_key():
-        if not admin_required():
-            return jsonify({"success": False, "error": "Unauthorized"}), 401
         data = request.json or {}
         key_id = data.get('id')
         if not key_id:
