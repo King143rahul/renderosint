@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: osint-knox
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: VEHICLE_API
+        sync: false
+      - key: NUMBER_API
+        sync: false
+      - key: AADHAAR_API
+        sync: false

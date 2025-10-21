@@ -1,36 +1,336 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Info Lookup Portal</title>
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Lookup Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+        .glass-card {
+            background: rgba(22, 27, 34, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(48, 54, 61, 0.5);
+        }
+        .tab-active {
+            border-color: #3b82f6 !important;
+            background-color: #1e40af;
+            color: #eff6ff;
+        }
+        .loader {
+            border: 4px solid #30363d;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-<body>
-  <h2>🔍 Information Lookup Portal</h2>
-  <select id="type">
-    <option value="vehicle">Vehicle Info</option>
-    <option value="number">Number Info</option>
-    <option value="aadhaar">Aadhaar Info</option>
-  </select>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-200 tracking-wider">
+                <i class="fas fa-user-secret mr-3"></i>OSINT BY KNOX
+            </h1>
+            <p class="text-gray-400 mt-2">Advanced Information Lookup</p>
+            <button id="adminLoginBtn" class="mt-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-all">
+                <i class="fas fa-user-shield mr-2"></i>Admin Login
+            </button>
+        </header>
 
-  <input id="number" placeholder="Enter number..." />
-  <input id="pin" placeholder="Enter PIN..." />
-  <button onclick="search()">Search</button>
+        <!-- Admin Login Modal -->
+        <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="glass-card rounded-xl shadow-2xl p-6 md:p-8 max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-200">Admin Login</h2>
+                    <button id="closeAdminModal" class="text-gray-400 hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <input type="text" id="adminUsername" placeholder="Username" 
+                               class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    </div>
+                    <div>
+                        <input type="password" id="adminPassword" placeholder="Password" 
+                               class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    </div>
+                    <div id="adminLoginError" class="hidden text-red-400 text-sm"></div>
+                    <button id="adminLoginSubmit" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </button>
+                </div>
+            </div>
+        </div>
 
-  <pre id="result"></pre>
+        <main class="glass-card rounded-xl shadow-2xl p-6 md:p-8">
+            <div class="flex border-b border-gray-700 mb-6">
+                <button data-type="phone" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all tab-active"><i class="fas fa-mobile-alt mr-2"></i>Phone</button>
+                <button data-type="vehicle" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all"><i class="fas fa-car mr-2"></i>Vehicle</button>
+                <button data-type="aadhaar" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all"><i class="fas fa-id-card mr-2"></i>Aadhaar</button>
+            </div>
 
-  <script>
-    async function search() {
-      const res = await fetch('/api/search', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          type: document.getElementById('type').value,
-          number: document.getElementById('number').value,
-          pin: document.getElementById('pin').value
-        })
-      });
-      document.getElementById('result').textContent = await res.text();
-    }
-  </script>
+            <div class="space-y-4">
+                <input id="numberInput" type="text" placeholder="Enter Phone Number" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <input id="pinInput" type="password" placeholder="Enter Your API Key" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                
+                <div class="text-right -mt-2 mb-2">
+                     <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="text-sm text-green-400 hover:text-green-300 transition-all">
+                        <i class="fab fa-whatsapp mr-1"></i>Get API Key
+                    </a>
+                </div>
+
+                <button id="searchBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i>Search
+                </button>
+            </div>
+
+            <div id="resultContainer" class="mt-8 min-h-[100px]"></div>
+        </main>
+        
+        <footer class="text-center mt-8">
+            <p class="text-gray-500 text-sm">developed by <span class="font-bold text-gray-400">RAHUL SHARMA</span></p>
+        </footer>
+    </div>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab-btn');
+        const numberInput = document.getElementById('numberInput');
+        const pinInput = document.getElementById('pinInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultContainer = document.getElementById('resultContainer');
+
+        let activeTab = 'phone';
+        const placeholders = {
+            phone: 'Enter Phone Number (e.g., 9876543210)',
+            vehicle: 'Enter Vehicle Number (e.g., DL12AB1234)',
+            aadhaar: 'Enter Aadhaar Number (e.g., 123456789012)'
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('tab-active'));
+                tab.classList.add('tab-active');
+                activeTab = tab.dataset.type;
+                numberInput.placeholder = placeholders[activeTab];
+            });
+        });
+
+        searchBtn.addEventListener('click', performSearch);
+        numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+
+
+        async function performSearch() {
+            const number = numberInput.value.trim();
+            const pin = pinInput.value.trim();
+
+            if (!number || !pin) {
+                displayError("Please enter both the number and your API key.");
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: activeTab,
+                        number: number,
+                        pin: pin
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                displayResults(result);
+
+            } catch (error) {
+                console.error('Search error:', error);
+                displayError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function displayResults(result) {
+            resultContainer.innerHTML = '';
+            
+            if (result.key_info) {
+                const keyInfoDiv = document.createElement('div');
+                keyInfoDiv.className = 'grid grid-cols-2 gap-4 mb-4 text-center p-3 bg-gray-800/50 rounded-lg text-sm border border-gray-700';
+                keyInfoDiv.innerHTML = `
+                    <div>
+                        <p class="text-gray-400">Searches Left Today</p>
+                        <p class="font-bold text-lg text-green-400">${result.key_info.searches_left}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Key Expires On</p>
+                        <p class="font-bold text-lg text-cyan-400">${result.key_info.expires_on}</p>
+                    </div>
+                `;
+                resultContainer.appendChild(keyInfoDiv);
+            }
+
+            if (!result.data || result.data.length === 0) {
+                 resultContainer.innerHTML += `<div class="text-center p-4 border border-dashed border-yellow-600 rounded-lg text-yellow-400">No data found for the given input.</div>`;
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'w-full text-left border-collapse';
+            
+            const thead = document.createElement('thead');
+            thead.className = 'border-b border-gray-700';
+            const headerRow = document.createElement('tr');
+            
+            const headers = Object.keys(result.data[0]);
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.className = 'p-3 capitalize text-sm font-semibold text-gray-300';
+                th.textContent = headerText.replace(/_/g, ' ');
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            result.data.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-800 hover:bg-gray-800/50 transition-colors';
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    td.className = 'p-3 text-sm text-gray-400 break-all';
+                    td.textContent = item[header];
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'overflow-x-auto';
+            tableWrapper.appendChild(table);
+
+            resultContainer.appendChild(tableWrapper);
+
+            const devInfo = document.createElement('p');
+            devInfo.className = 'text-right text-xs text-gray-500 mt-4';
+            devInfo.innerHTML = `Search powered by <span class="font-bold text-gray-400">${result.dev}</span>`;
+            resultContainer.appendChild(devInfo);
+        }
+
+        function displayError(message) {
+            resultContainer.innerHTML = `
+                <div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+        }
+        
+        function setLoading(isLoading) {
+            if (isLoading) {
+                searchBtn.disabled = true;
+                searchBtn.innerHTML = `<div class="loader !w-6 !h-6 !border-t-white"></div>`;
+                resultContainer.innerHTML = `
+                    <div class="flex justify-center items-center p-8">
+                        <div class="loader"></div>
+                    </div>
+                `;
+            } else {
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = `<i class="fas fa-search mr-2"></i>Search`;
+            }
+        }
+
+        // Admin Login Modal Functionality
+        const adminModal = document.getElementById('adminModal');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const closeAdminModal = document.getElementById('closeAdminModal');
+        const adminUsername = document.getElementById('adminUsername');
+        const adminPassword = document.getElementById('adminPassword');
+        const adminLoginSubmit = document.getElementById('adminLoginSubmit');
+        const adminLoginError = document.getElementById('adminLoginError');
+
+        adminLoginBtn.addEventListener('click', () => {
+            adminModal.classList.remove('hidden');
+            adminModal.classList.add('flex');
+            adminUsername.focus();
+        });
+
+        closeAdminModal.addEventListener('click', () => {
+            adminModal.classList.add('hidden');
+            adminModal.classList.remove('flex');
+            adminLoginError.classList.add('hidden');
+            adminUsername.value = '';
+            adminPassword.value = '';
+        });
+
+        adminLoginSubmit.addEventListener('click', async () => {
+            const username = adminUsername.value.trim();
+            const password = adminPassword.value.trim();
+
+            if (!username || !password) {
+                adminLoginError.textContent = 'Please enter both username and password';
+                adminLoginError.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    window.location.href = '/admin';
+                } else {
+                    throw new Error(result.error || 'Login failed');
+                }
+            } catch (error) {
+                adminLoginError.textContent = error.message;
+                adminLoginError.classList.remove('hidden');
+            }
+        });
+
+        // Close modal when clicking outside
+        adminModal.addEventListener('click', (e) => {
+            if (e.target === adminModal) {
+                closeAdminModal.click();
+            }
+        });
+
+        // Handle Enter key in login form
+        adminPassword.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                adminLoginSubmit.click();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,27 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Admin Panel</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Panel - OSINT by KNOX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body { font-family: 'Roboto Mono', monospace; background-color:#0d1117; color:#c9d1d9; }
+        .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
+        .modal-content { background-color:#161b22; }
+        .hidden { display: none !important; }
+    </style>
 </head>
-<body>
-  <h2>🔐 Admin Login</h2>
-  <input id="username" value="RAHUL">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <pre id="output"></pre>
+<body class="min-h-screen p-4 md:p-8">
+    <div id="login-view" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-200"><i class="fas fa-user-shield mr-3"></i>Admin Panel</h1>
+                <p class="text-gray-400 mt-2">OSINT by KNOX</p>
+            </header>
+            <main class="glass-card rounded-xl shadow-2xl p-8 space-y-6">
+                <div>
+                    <input id="username" placeholder="Admin Username" value="RAHUL" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <input id="password" type="password" placeholder="Admin Password" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button id="loginBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">Login</button>
+                <div id="login-error" class="text-red-400 text-center text-sm"></div>
+            </main>
+        </div>
+    </div>
 
-  <script>
-    async function login() {
-      const res = await fetch('/admin', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          username: document.getElementById('username').value,
-          password: document.getElementById('password').value
-        })
-      });
-      document.getElementById('output').textContent = await res.text();
-    }
-  </script>
+    <div id="dashboard-view" class="hidden w-full max-w-7xl mx-auto">
+        <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+             <h1 class="text-3xl font-bold text-gray-200"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</h1>
+             <div class="flex items-center gap-2">
+                <button id="add-key-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white"><i class="fas fa-plus mr-2"></i>Add New Key</button>
+                <button id="logoutBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Logout</button>
+             </div>
+        </header>
+
+        <main class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="border-b border-gray-700">
+                        <tr>
+                            <th class="p-3 text-sm font-semibold">API Key (PIN)</th>
+                            <th class="p-3 text-sm font-semibold">Usage (Today/Limit)</th>
+                            <th class="p-3 text-sm font-semibold">Expires On</th>
+                            <th class="p-3 text-sm font-semibold">Created On</th>
+                            <th class="p-3 text-sm font-semibold text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keys-table-body">
+                        <!-- Key rows will be injected here by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Key Modal -->
+    <div id="add-key-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden">
+        <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
+            <h2 class="text-2xl font-bold">Add New API Key</h2>
+            <input id="new-pin" placeholder="Enter new PIN" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <input id="new-limit" type="number" placeholder="Daily Search Limit (e.g., 10)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <div>
+                <label class="text-sm text-gray-400">Expiry Date (Optional)</label>
+                <input id="new-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg" min="">
+            </div>
+            <div id="modal-error" class="text-red-400 text-center text-sm"></div>
+            <div class="flex gap-4">
+                <button id="confirm-add-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
+                <button id="cancel-add-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>
