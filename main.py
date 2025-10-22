@@ -24,7 +24,8 @@ def add_security_headers(response):
     return response
 
 # --- Feature flags and admin config ---
-ENABLE_ADMIN_PANEL = os.getenv("ENABLE_ADMIN_PANEL", "true").lower() == "true"
+# THIS LINE IS CHANGED TO FORCE THE ADMIN PANEL ON
+ENABLE_ADMIN_PANEL = True 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "RAHUL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "KNOX")
 
@@ -264,3 +265,4 @@ if ENABLE_ADMIN_PANEL:
 if __name__ == '__main__':
     # dev server (debug True for local testing)
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
+    
