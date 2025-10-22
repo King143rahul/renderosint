@@ -146,7 +146,7 @@
             }
         }
 
-        // --- NEW AND IMPROVED DISPLAY FUNCTION ---
+        // --- NEWER, FULLY DYNAMIC DISPLAY FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = ''; // Clear previous results
 
@@ -163,13 +163,19 @@
             if (result.data && Array.isArray(result.data)) {
                 dataToShow = result.data;
             } 
-            // Check for common Vehicle keys (for Vehicle API)
-            else if (result.vehicle_no || result.owner) {
+            // Check if 'data' is NOT there (for Vehicle)
+            else if (!result.data) {
                 dataToShow = [result]; // Put the single object into an array
             }
             
+            // Filter out any "empty" results
+            const validData = dataToShow.filter(item => {
+                const usefulKeys = Object.keys(item).filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
+                return usefulKeys.length > 0;
+            });
+
             // If no data was found in any format
-            if (dataToShow.length === 0) {
+            if (validData.length === 0) {
                  displayError('No data found for this query.');
                  return;
             }
@@ -179,11 +185,6 @@
                 const keyMap = {
                     'fname': "Father's Name",
                     'alt_number': 'Alt. Number',
-                    'mobile': 'Mobile',
-                    'email': 'Email',
-                    'address': 'Address',
-                    'name': 'Name',
-                    'circle': 'Circle',
                     'vehicle_no': 'Vehicle No',
                     'owner': 'Owner',
                     'father_name': "Father's Name",
@@ -203,20 +204,23 @@
                     'puc_upto': 'PUC Upto',
                     'financier_name': 'Financier',
                     'city_name': 'City',
-                    'phone': 'Phone',
                     'vehicle_age': 'Vehicle Age',
                     'puc_status': 'PUC Status',
-                    'insurance_status': 'Ins. Status',
-                    'code': 'RTO Code',
-                    'id': 'ID'
+                    'insurance_status': 'Ins. Status'
                 };
                 return keyMap[key] || key.replace(/_/g, ' '); // Default
             };
 
+            // --- KEYS TO PUT ON TOP ---
+            const priorityKeys = [
+                'name', 'owner', 'mobile', 'vehicle_no', 
+                'father_name', 'fname', 'address', 'email', 'alt_number'
+            ];
+
             let htmlContent = '';
             
-            // Loop through each result (will be 1 for vehicle, or many for phone)
-            dataToShow.forEach((item, index) => {
+            // Loop through each valid result
+            validData.forEach((item, index) => {
                 const resultId = `result-text-${index}`;
                 let plainTextContent = ''; // For the copy button
                 
@@ -231,31 +235,34 @@
                         <div class="p-4 space-y-2 text-sm text-gray-200">
                 `;
 
-                // --- DYNAMICALLY LOOP OVER ALL KEYS ---
-                for (const key in item) {
-                    // Skip keys we handle separately or don't want
-                    const keysToSkip = ['status', 'key_status', 'dev', 'data'];
-                    if (keysToSkip.includes(key)) {
-                        continue;
-                    }
-                    
+                // --- BUILD THE ORDERED LIST OF KEYS TO PRINT ---
+                const allKeys = Object.keys(item);
+                const usefulKeys = allKeys.filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
+                
+                const keysInOrder = [
+                    // Add priority keys that exist in the item
+                    ...priorityKeys.filter(k => usefulKeys.includes(k)),
+                    // Add all other keys that are not in the priority list
+                    ...usefulKeys.filter(k => !priorityKeys.includes(k))
+                ];
+
+                // --- LOOP ONE TIME in the correct order ---
+                keysInOrder.forEach(key => {
                     let value = item[key];
                     const label = prettyKey(key);
 
-                    // Add a special highlight for the name/owner
                     let valueClass = (key === 'name' || key === 'owner') ? 'text-cyan-400 font-bold' : '';
                     
-                    // Make address readable
                     if (key === 'address' && typeof value === 'string') {
                         value = (value || '').replace(/!/g, ', ');
                     }
                     
-                    // Don't show empty fields
-                    if (value) {
-                        cardHtml += `<div><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
-                        plainTextContent += `${label}: ${value}\n`;
-                    }
-                }
+                    cardHtml += `<div><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
+                    plainTextContent += `${label}: ${value}\n`;
+                });
+
+                // --- ADD DEVELOPER NAME TO COPIED TEXT ---
+                plainTextContent += `\n\nDeveloper: RAHUL SHARMA`;
 
                 cardHtml += `
                         </div>
@@ -275,7 +282,7 @@
                 `;
             }
             
-            // Add Developer Name (changed as requested)
+            // Add Developer Name
             if (result.dev) {
                 htmlContent += `
                     <div class="text-center text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
