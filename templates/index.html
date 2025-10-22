@@ -44,36 +44,7 @@
                 <i class="fas fa-user-secret mr-3"></i>OSINT BY KNOX
             </h1>
             <p class="text-gray-400 mt-2">Advanced Information Lookup</p>
-            <button id="adminLoginBtn" class="mt-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-all">
-                <i class="fas fa-user-shield mr-2"></i>Admin Login
-            </button>
         </header>
-
-        <!-- Admin Login Modal -->
-        <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="glass-card rounded-xl shadow-2xl p-6 md:p-8 max-w-md w-full mx-4">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-200">Admin Login</h2>
-                    <button id="closeAdminModal" class="text-gray-400 hover:text-gray-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div>
-                        <input type="text" id="adminUsername" placeholder="Username" 
-                               class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    </div>
-                    <div>
-                        <input type="password" id="adminPassword" placeholder="Password" 
-                               class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    </div>
-                    <div id="adminLoginError" class="hidden text-red-400 text-sm"></div>
-                    <button id="adminLoginSubmit" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Login
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <main class="glass-card rounded-xl shadow-2xl p-6 md:p-8">
             <div class="flex border-b border-gray-700 mb-6">
@@ -106,7 +77,7 @@
     </div>
 
     <script>
-        // Tab controls and search logic (unchanged)
+        // Tab controls and search logic
         const tabs = document.querySelectorAll('.tab-btn');
         const numberInput = document.getElementById('numberInput');
         const pinInput = document.getElementById('pinInput');
@@ -174,68 +145,6 @@
             searchBtn.disabled = loading;
             searchBtn.innerHTML = loading ? `<div class="loader !w-6 !h-6 !border-t-white"></div>` : `<i class="fas fa-search mr-2"></i>Search`;
         }
-
-        // --- Admin login modal logic ---
-        const adminModal = document.getElementById('adminModal');
-        const adminLoginBtn = document.getElementById('adminLoginBtn');
-        const closeAdminModal = document.getElementById('closeAdminModal');
-        const adminUsername = document.getElementById('adminUsername');
-        const adminPassword = document.getElementById('adminPassword');
-        const adminLoginSubmit = document.getElementById('adminLoginSubmit');
-        const adminLoginError = document.getElementById('adminLoginError');
-
-        adminLoginBtn.addEventListener('click', () => {
-            adminModal.classList.remove('hidden');
-            adminModal.classList.add('flex');
-            adminUsername.focus();
-        });
-
-        closeAdminModal.addEventListener('click', () => {
-            adminModal.classList.add('hidden');
-            adminModal.classList.remove('flex');
-            adminLoginError.classList.add('hidden');
-            adminUsername.value = '';
-            adminPassword.value = '';
-        });
-
-        adminLoginSubmit.addEventListener('click', async () => {
-            const username = adminUsername.value.trim();
-            const password = adminPassword.value.trim();
-
-            if (!username || !password) {
-                adminLoginError.textContent = 'Please enter both username and password';
-                adminLoginError.classList.remove('hidden');
-                return;
-            }
-
-            try {
-                const response = await fetch(window.location.origin + '/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    window.location.href = '/admin';
-                } else {
-                    throw new Error(result.error || 'Invalid credentials');
-                }
-            } catch (err) {
-                adminLoginError.textContent = err.message;
-                adminLoginError.classList.remove('hidden');
-            }
-        });
-
-        // Close modal on outside click
-        adminModal.addEventListener('click', (e) => {
-            if (e.target === adminModal) closeAdminModal.click();
-        });
-
-        adminPassword.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') adminLoginSubmit.click();
-        });
     </script>
 </body>
 </html>
