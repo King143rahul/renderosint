@@ -12,7 +12,21 @@
         .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
         .modal-content { background-color:#161b22; }
         .hidden { display: none !important; }
-        .icon-disabled { color: #444; }
+        /* Style for the select dropdown in the modal */
+        #new-key-type {
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%239ca3af%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%20clip-rule%3D%22evenodd%22%20%2F%3E%3C%2Fsvg%3E');
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            color: #c9d1d9;
+        }
+        #new-key-type option {
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -52,8 +66,8 @@
                             <th class="p-3 text-sm font-semibold">API Key (PIN)</th>
                             <th class="p-3 text-sm font-semibold">Usage (Today/Limit)</th>
                             <th class="p-3 text-sm font-semibold">Expires</th>
-                            <th class="p-3 text-sm font-semibold">Permissions</th>
-                            <th class.p-3 text-sm font-semibold">Device Lock</th>
+                            <th class="p-3 text-sm font-semibold">Key Type</th>
+                            <th class="p-3 text-sm font-semibold">Device Lock</th>
                             <th class="p-3 text-sm font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
@@ -75,21 +89,13 @@
             </div>
             
             <div>
-                <label class="text-sm text-gray-400">Permissions</label>
-                <div class="flex gap-4 mt-2">
-                    <label class="flex items-center">
-                        <input id="new-allow-phone" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
-                        <span class="ml-2 text-gray-300">Phone</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input id="new-allow-vehicle" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
-                        <span class="ml-2 text-gray-300">Vehicle</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input id="new-allow-aadhaar" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
-                        <span class="ml-2 text-gray-300">Aadhaar</span>
-                    </label>
-                </div>
+                <label for="new-key-type" class="text-sm text-gray-400">Key Type</label>
+                <select id="new-key-type" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <option value="universal" selected>Universal (All Tools)</option>
+                    <option value="phone">Phone Only</option>
+                    <option value="vehicle">Vehicle Only</option>
+                    <option value="aadhaar">Aadhaar Only</option>
+                </select>
             </div>
             
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
@@ -129,10 +135,7 @@
         const newLimitInput = document.getElementById('new-limit');
         const newExpiryInput = document.getElementById('new-expiry');
         const modalError = document.getElementById('modal-error');
-        // New permission inputs
-        const newAllowPhone = document.getElementById('new-allow-phone');
-        const newAllowVehicle = document.getElementById('new-allow-vehicle');
-        const newAllowAadhaar = document.getElementById('new-allow-aadhaar');
+        const newKeyType = document.getElementById('new-key-type'); // New dropdown
 
         let isLoggedIn = false;
 
@@ -203,12 +206,19 @@
                 const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
                 const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
                 
-                // Build permission icons
-                const perms = `
-                    <i class="fas fa-mobile-alt fa-fw ${key.allow_phone ? 'text-green-500' : 'icon-disabled'}" title="Phone"></i>
-                    <i class="fas fa-car fa-fw ${key.allow_vehicle ? 'text-green-500' : 'icon-disabled'}" title="Vehicle"></i>
-                    <i class="fas fa-id-card fa-fw ${key.allow_aadhaar ? 'text-green-500' : 'icon-disabled'}" title="Aadhaar"></i>
-                `;
+                // --- NEW: Determine Key Type string ---
+                let keyTypeStr = '';
+                if (key.allow_phone && key.allow_vehicle && key.allow_aadhaar) {
+                    keyTypeStr = '<span class="font-bold text-green-500">Universal</span>';
+                } else if (key.allow_phone) {
+                    keyTypeStr = 'Phone Only';
+                } else if (key.allow_vehicle) {
+                    keyTypeStr = 'Vehicle Only';
+                } else if (key.allow_aadhaar) {
+                    keyTypeStr = 'Aadhaar Only';
+                } else {
+                    keyTypeStr = '<span class="text-red-500">None</span>';
+                }
                 
                 // Build device lock status
                 const deviceLock = key.device_id
@@ -219,7 +229,7 @@
                     <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
                     <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
                     <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
-                    <td class="p-3 text-lg">${perms}</td>
+                    <td class="p-3 text-sm">${keyTypeStr}</td>
                     <td class="p-3 text-lg text-center">${deviceLock}</td>
                     <td class="p-3 text-right">
                         <button class="reset-device-btn px-3 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Reset Device Lock"><i class="fas fa-key"></i></button>
@@ -257,7 +267,7 @@
                 });
             });
             
-            // --- NEW: ATTACH RESET DEVICE HANDLERS ---
+            // --- ATTACH RESET DEVICE HANDLERS ---
             document.querySelectorAll('.reset-device-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -293,10 +303,7 @@
             newLimitInput.value = '';
             newExpiryInput.value = '';
             modalError.textContent = '';
-            // Reset permission checkboxes
-            newAllowPhone.checked = true;
-            newAllowVehicle.checked = true;
-            newAllowAadhaar.checked = true;
+            newKeyType.value = 'universal'; // Reset dropdown
             addKeyModal.classList.remove('hidden');
         }
 
@@ -311,10 +318,7 @@
             const pin = newPinInput.value.trim();
             const limit = parseInt(newLimitInput.value || '10', 10);
             const expiry = newExpiryInput.value || null;
-            // Get permission values
-            const allow_phone = newAllowPhone.checked;
-            const allow_vehicle = newAllowVehicle.checked;
-            const allow_aadhaar = newAllowAadhaar.checked;
+            const key_type = newKeyType.value; // Get value from dropdown
 
             if (!pin) {
                 modalError.textContent = 'PIN cannot be empty.';
@@ -330,9 +334,7 @@
                         pin, 
                         limit, 
                         expiry, 
-                        allow_phone, 
-                        allow_vehicle, 
-                        allow_aadhaar 
+                        key_type // Send the key_type
                     })
                 });
                 const json = await res.json();
