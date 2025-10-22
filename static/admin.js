@@ -6,13 +6,13 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 // Loading state helper functions
 function setLoading(button, isLoading, originalText) {
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    } else {
-        button.disabled = false;
-        button.innerHTML = originalText;
-    }
+    if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    } else {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
 }
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
@@ -32,167 +32,167 @@ const modalError = document.getElementById('modal-error');
 let isLoggedIn = false;
 
 function showLogin() {
-    loginView.classList.remove('hidden');
-    dashboardView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+    dashboardView.classList.add('hidden');
 }
 
 function showDashboard(keys) {
-    loginView.classList.add('hidden');
-    dashboardView.classList.remove('hidden');
-    renderKeys(keys || []);
+    loginView.classList.add('hidden');
+    dashboardView.classList.remove('hidden');
+    renderKeys(keys || []);
 }
 
 async function handleLogin() {
-    loginError.textContent = '';
-    setLoading(loginBtn, true, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-    try {
-        const response = await fetch('/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
-        });
-        const result = await response.json();
-        if (result.success) {
-            isLoggedIn = true;
-            showDashboard(result.keys || []);
-        } else {
-            loginError.textContent = result.error || 'Login failed.';
-            setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-        }
-    } catch (err) {
-        loginError.textContent = 'Network error — check server.';
-        setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-        console.error(err);
-    }
+    loginError.textContent = '';
+    setLoading(loginBtn, true, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
+    try {
+        const response = await fetch(window.location.origin + '/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
+        });
+        const result = await response.json();
+        if (result.success) {
+            isLoggedIn = true;
+            showDashboard(result.keys || []);
+        } else {
+            loginError.textContent = result.error || 'Login failed.';
+            setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
+        }
+    } catch (err) {
+        loginError.textContent = 'Network error — check server.';
+        setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
+        console.error(err);
+    }
 }
 
 async function loadKeys() {
-    try {
-        const response = await fetch('/admin/keys', { method: 'GET' });
-        if (!response.ok) {
-            // Not logged in or other error -> show login
-            showLogin();
-            return;
-        }
-        const result = await response.json();
-        if (result.success) {
-            showDashboard(result.keys);
-        } else {
-            showLogin();
-        }
-    } catch (err) {
-        console.error('Failed to load keys:', err);
-        showLogin();
-    }
+    try {
+        const response = await fetch(window.location.origin + '/admin/keys', { method: 'GET' });
+        if (!response.ok) {
+            // Not logged in or other error -> show login
+            showLogin();
+            return;
+        }
+        const result = await response.json();
+        if (result.success) {
+            showDashboard(result.keys);
+        } else {
+            showLogin();
+        }
+    } catch (err) {
+        console.error('Failed to load keys:', err);
+        showLogin();
+    }
 }
 
 function renderKeys(keys) {
-    keysTableBody.innerHTML = '';
-    if (!keys || keys.length === 0) {
-        keysTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
-        return;
-    }
-    keys.forEach(key => {
-        const row = document.createElement('tr');
-        row.dataset.keyId = key.id;
-        const expiryDateObj = key.expiry ? new Date(key.expiry) : null;
-        const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
-        const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
-        const createdDate = key.created_at ? new Date(key.created_at).toLocaleString() : '';
+    keysTableBody.innerHTML = '';
+    if (!keys || keys.length === 0) {
+        keysTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
+        return;
+    }
+    keys.forEach(key => {
+        const row = document.createElement('tr');
+        row.dataset.keyId = key.id;
+        const expiryDateObj = key.expiry ? new Date(key.expiry) : null;
+        const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
+        const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
+        const createdDate = key.created_at ? new Date(key.created_at).toLocaleString() : '';
 
-        row.innerHTML = `
-            <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
-            <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
-            <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
-            <td class="p-3 text-sm text-gray-400">${createdDate}</td>
-            <td class="p-3 text-right">
-                <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}"><i class="fas fa-trash"></i></button>
-            </td>
-        `;
-        keysTableBody.appendChild(row);
-    });
+        row.innerHTML = `
+            <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
+            <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
+            <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
+            <td class="p-3 text-sm text-gray-400">${createdDate}</td>
+            <td class="p-3 text-right">
+                <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        keysTableBody.appendChild(row);
+    });
 
-    // attach delete handlers
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            if (!confirm('Delete this key?')) return;
-            const deleteBtn = e.currentTarget;
-            setLoading(deleteBtn, true, '<i class="fas fa-trash"></i>');
-            try {
-                const res = await fetch('/admin/delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: parseInt(id, 10) })
-                });
-                const json = await res.json();
-                if (json.success) {
-                    const row = document.querySelector(`tr[data-key-id='${id}']`);
-                    if (row) row.remove();
-                } else {
-                    alert('Delete error: ' + (json.error || 'unknown'));
-                    setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
-                }
-            } catch (err) {
-                alert('Network error while deleting.');
-                console.error(err);
-                setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
-            }
-        });
-    });
+    // attach delete handlers
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (!confirm('Delete this key?')) return;
+            const deleteBtn = e.currentTarget;
+            setLoading(deleteBtn, true, '<i class="fas fa-trash"></i>');
+            try {
+                const res = await fetch(window.location.origin + '/admin/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: parseInt(id, 10) })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    const row = document.querySelector(`tr[data-key-id='${id}']`);
+                    if (row) row.remove();
+                } else {
+                    alert('Delete error: ' + (json.error || 'unknown'));
+                    setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+                }
+            } catch (err) {
+                alert('Network error while deleting.');
+                console.error(err);
+                setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+            }
+        });
+    });
 }
 
 function openAddModal() {
-    const today = new Date().toISOString().split('T')[0];
-    newExpiryInput.setAttribute('min', today);
-    newPinInput.value = '';
-    newLimitInput.value = '';
-    newExpiryInput.value = '';
-    modalError.textContent = '';
-    addKeyModal.classList.remove('hidden');
+    const today = new Date().toISOString().split('T')[0];
+    newExpiryInput.setAttribute('min', today);
+    newPinInput.value = '';
+    newLimitInput.value = '';
+    newExpiryInput.value = '';
+    modalError.textContent = '';
+    addKeyModal.classList.remove('hidden');
 }
 
 function closeAddModal() {
-    addKeyModal.classList.add('hidden');
+    addKeyModal.classList.add('hidden');
 }
 
 async function handleAddKey() {
-    modalError.textContent = '';
-    setLoading(confirmAddBtn, true, '<i class="fas fa-plus mr-2"></i>Create Key');
-    const pin = newPinInput.value.trim();
-    const limit = parseInt(newLimitInput.value || '10', 10);
-    const expiry = newExpiryInput.value || null;
-    if (!pin) {
-        modalError.textContent = 'PIN cannot be empty.';
-        return;
-    }
-    try {
-        const res = await fetch('/admin/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin, limit, expiry })
-        });
-        const json = await res.json();
-        if (json.success) {
-            await loadKeys();
-            closeAddModal();
-        } else {
-            modalError.textContent = json.error || 'Failed to add key.';
-            setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
-        }
-    } catch (err) {
-        modalError.textContent = 'Network error.';
-        console.error(err);
-        setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
-    }
+    modalError.textContent = '';
+    setLoading(confirmAddBtn, true, '<i class="fas fa-plus mr-2"></i>Create Key');
+    const pin = newPinInput.value.trim();
+    const limit = parseInt(newLimitInput.value || '10', 10);
+    const expiry = newExpiryInput.value || null;
+    if (!pin) {
+        modalError.textContent = 'PIN cannot be empty.';
+        return;
+    }
+    try {
+        const res = await fetch(window.location.origin + '/admin/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin, limit, expiry })
+        });
+        const json = await res.json();
+        if (json.success) {
+            await loadKeys();
+            closeAddModal();
+        } else {
+            modalError.textContent = json.error || 'Failed to add key.';
+            setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
+        }
+    } catch (err) {
+        modalError.textContent = 'Network error.';
+        console.error(err);
+        setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
+s   }
 }
 
 async function handleLogout() {
-    try {
-        await fetch('/admin/logout', { method: 'POST' });
-    } catch (e) {}
-    isLoggedIn = false;
-    showLogin();
+    try {
+        await fetch(window.location.origin + '/admin/logout', { method: 'POST' });
+    } catch (e) {}
+    isLoggedIn = false;
+    showLogin();
 }
 
 // Event listeners
