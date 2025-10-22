@@ -144,7 +144,7 @@ def search():
 
     # --- DEVICE LOCK FIX: This logic is now robust ---
     if not key['device_id']:
-        # First time use, lock this key to this device
+        # First time use, try to lock this key to this device
         try:
             conn.execute("UPDATE keys SET device_id = ? WHERE pin = ? AND device_id IS NULL", (device_id, pin))
             conn.commit()
@@ -327,4 +327,3 @@ if ENABLE_ADMIN_PANEL:
 # --- Run ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
-    
