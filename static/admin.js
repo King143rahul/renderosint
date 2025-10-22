@@ -77,7 +77,7 @@ async function loadKeys() {
         const result = await response.json();
         if (result.success) {
             showDashboard(result.keys);
-        } else {
+      } else {
             showLogin();
         }
     } catch (err) {
@@ -123,20 +123,20 @@ function renderKeys(keys) {
                 const res = await fetch(window.location.origin + '/admin/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-line-height: 1.5;                  body: JSON.stringify({ id: parseInt(id, 10) })
+                    body: JSON.stringify({ id: parseInt(id, 10) })
                 });
                 const json = await res.json();
                 if (json.success) {
                     const row = document.querySelector(`tr[data-key-id='${id}']`);
                     if (row) row.remove();
-                } else {
+          _       } else {
                     alert('Delete error: ' + (json.error || 'unknown'));
                     setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
                 }
             } catch (err) {
                 alert('Network error while deleting.');
                 console.error(err);
-s               setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+                setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
             }
         });
     });
@@ -146,7 +146,6 @@ function openAddModal() {
     const today = new Date().toISOString().split('T')[0];
     newExpiryInput.setAttribute('min', today);
     newPinInput.value = '';
-Note: The `line-height` and stray `s` were part of the erroneous text and have been removed in the final, correct version below.
     newLimitInput.value = '';
     newExpiryInput.value = '';
     modalError.textContent = '';
@@ -165,7 +164,7 @@ async function handleAddKey() {
     const expiry = newExpiryInput.value || null;
     if (!pin) {
         modalError.textContent = 'PIN cannot be empty.';
-        return;
+Player:        return;
     }
     try {
         const res = await fetch(window.location.origin + '/admin/add', {
@@ -176,13 +175,13 @@ async function handleAddKey() {
         const json = await res.json();
         if (json.success) {
             await loadKeys();
-G             closeAddModal();
+            closeAddModal();
         } else {
             modalError.textContent = json.error || 'Failed to add key.';
+Note: The "Player:" and "_" were artifacts in the original file and have been removed.
             setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
         }
-  Note: The stray `G` was part of the erroneous text and has been removed in the final, correct version below.
-  } catch (err) {
+    } catch (err) {
         modalError.textContent = 'Network error.';
         console.error(err);
         setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
@@ -194,8 +193,7 @@ async function handleLogout() {
         await fetch(window.location.origin + '/admin/logout', { method: 'POST' });
     } catch (e) {}
     isLoggedIn = false;
-  Note: The extra brace was part of the erroneous text and has been removed in the final, correct version below.
-  showLogin();
+    showLogin();
 }
 
 // Event listeners
