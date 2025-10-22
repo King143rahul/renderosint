@@ -54,11 +54,9 @@ def initialize_database():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Get existing columns
     cursor.execute("PRAGMA table_info(keys)")
     columns = [row[1] for row in cursor.fetchall()]
 
-    # Create table if it doesn't exist (with all new columns)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS keys (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +72,6 @@ def initialize_database():
     )
     """)
     
-    # --- Add new columns if they don't exist (for migration) ---
     if 'device_id' not in columns:
         cursor.execute("ALTER TABLE keys ADD COLUMN device_id TEXT")
     if 'allow_phone' not in columns:
@@ -91,10 +88,8 @@ def seed_keys_from_env():
     try:
         items = json.loads(API_KEYS_JSON)
         if not isinstance(items, list):
-            print("API_KEYS must be a JSON array. Skipping seeding.")
             return
-    except Exception as e:
-        print("Failed to parse API_KEYS JSON:", e)
+    except Exception:
         return
 
     conn = get_db_connection()
@@ -105,14 +100,12 @@ def seed_keys_from_env():
         if not pin:
             continue
         try:
-            # Insert or ignore duplicates
             conn.execute("INSERT OR IGNORE INTO keys (pin, limit_count, expiry) VALUES (?, ?, ?)", (pin, limit, expiry))
         except Exception as e:
             print("Failed to insert key from env:", pin, e)
     conn.commit()
     conn.close()
 
-# Initialize DB + seed from env
 initialize_database()
 seed_keys_from_env()
 
@@ -127,7 +120,7 @@ def search():
     lookup_type = data.get('type')
     number = data.get('number')
     pin = data.get('pin')
-    device_id = data.get('deviceId') # Get new deviceId
+    device_id = data.get('deviceId')
 
     if not all([lookup_type, number, pin, device_id]):
         return jsonify({"error": "Missing required fields."}), 400
@@ -149,16 +142,25 @@ def search():
         conn.close()
         return jsonify({"error": "Daily search limit reached for this key."}), 403
 
-    # --- NEW: Device Lock Check ---
+    # --- DEVICE LOCK FIX: This logic is now robust ---
     if not key['device_id']:
         # First time use, lock this key to this device
-        conn.execute("UPDATE keys SET device_id = ? WHERE pin = ?", (device_id, pin))
-        conn.commit()
-    elif key['device_id'] != device_id:
+        try:
+            conn.execute("UPDATE keys SET device_id = ? WHERE pin = ? AND device_id IS NULL", (device_id, pin))
+            conn.commit()
+            # After committing, we must reload the key to be sure we won the race
+            key = conn.execute("SELECT * FROM keys WHERE pin = ?", (pin,)).fetchone()
+        except sqlite3.IntegrityError:
+             # This can happen in a race, reload the key to check
+             key = conn.execute("SELECT * FROM keys WHERE pin = ?", (pin,)).fetchone()
+
+    # Now we do the check with the (potentially) updated key
+    if key['device_id'] != device_id:
         conn.close()
         return jsonify({"error": "API Key is locked to another device."}), 403
+    # --- END OF FIX ---
 
-    # --- NEW: Permission Check ---
+    # --- Permission Check ---
     if lookup_type == "phone" and not key['allow_phone']:
         conn.close()
         return jsonify({"error": "This key does not have permission for Phone searches."}), 403
@@ -266,10 +268,13 @@ if ENABLE_ADMIN_PANEL:
         limit = data.get('limit', 10)
         expiry = data.get('expiry')
         
-        # Get new permissions, default to 1 (true)
-        allow_phone = 1 if data.get('allow_phone', True) else 0
-        allow_vehicle = 1 if data.get('allow_vehicle', True) else 0
-        allow_aadhaar = 1 if data.get('allow_aadhaar', True) else 0
+        # --- NEW: Logic for Key Type ---
+        key_type = data.get('key_type', 'universal')
+        
+        allow_phone = 1 if key_type in ['universal', 'phone'] else 0
+        allow_vehicle = 1 if key_type in ['universal', 'vehicle'] else 0
+        allow_aadhaar = 1 if key_type in ['universal', 'aadhaar'] else 0
+        # --- END OF NEW LOGIC ---
 
         if not pin:
             return jsonify({"success": False, "error": "PIN cannot be empty."}), 400
@@ -298,7 +303,6 @@ if ENABLE_ADMIN_PANEL:
         conn.close()
         return jsonify({"success": True})
     
-    # --- NEW ROUTE: To reset device lock ---
     @app.route('/admin/reset_device', methods=['POST'])
     @admin_required
     def reset_device():
@@ -323,3 +327,4 @@ if ENABLE_ADMIN_PANEL:
 # --- Run ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
+    
