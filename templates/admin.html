@@ -206,7 +206,6 @@
                 const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
                 const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
                 
-                // --- NEW: Determine Key Type string ---
                 let keyTypeStr = '';
                 if (key.allow_phone && key.allow_vehicle && key.allow_aadhaar) {
                     keyTypeStr = '<span class="font-bold text-green-500">Universal</span>';
@@ -220,7 +219,6 @@
                     keyTypeStr = '<span class="text-red-500">None</span>';
                 }
                 
-                // Build device lock status
                 const deviceLock = key.device_id
                     ? `<i class="fas fa-lock text-yellow-500" title="${key.device_id}"></i>`
                     : `<i class="fas fa-lock-open text-gray-500" title="Not locked"></i>`;
@@ -239,7 +237,6 @@
                 keysTableBody.appendChild(row);
             });
 
-            // --- ATTACH DELETE HANDLERS ---
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -254,7 +251,7 @@
                         });
                         const json = await res.json();
                         if (json.success) {
-                            await loadKeys(); // Reload all keys
+                            await loadKeys(); 
                         } else {
                             alert('Delete error: ' + (json.error || 'unknown'));
                             setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
@@ -267,7 +264,6 @@
                 });
             });
             
-            // --- ATTACH RESET DEVICE HANDLERS ---
             document.querySelectorAll('.reset-device-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -282,7 +278,7 @@
                         });
                         const json = await res.json();
                         if (json.success) {
-                            await loadKeys(); // Reload all keys to show new status
+                            await loadKeys(); 
                         } else {
                             alert('Reset error: ' + (json.error || 'unknown'));
                             setLoading(resetBtn, false, '<i class="fas fa-key"></i>');
@@ -303,7 +299,7 @@
             newLimitInput.value = '';
             newExpiryInput.value = '';
             modalError.textContent = '';
-            newKeyType.value = 'universal'; // Reset dropdown
+            newKeyType.value = 'universal'; 
             addKeyModal.classList.remove('hidden');
         }
 
@@ -318,7 +314,7 @@
             const pin = newPinInput.value.trim();
             const limit = parseInt(newLimitInput.value || '10', 10);
             const expiry = newExpiryInput.value || null;
-            const key_type = newKeyType.value; // Get value from dropdown
+            const key_type = newKeyType.value; 
 
             if (!pin) {
                 modalError.textContent = 'PIN cannot be empty.';
@@ -334,7 +330,7 @@
                         pin, 
                         limit, 
                         expiry, 
-                        key_type // Send the key_type
+                        key_type 
                     })
                 });
                 const json = await res.json();
