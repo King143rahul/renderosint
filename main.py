@@ -133,7 +133,7 @@ def search():
             conn.close()
             return jsonify({"error": "Vehicle API not configured."}), 500
         api_url = VEHICLE_API.format(number)
-    elif lookup_type == "number":
+    elif lookup_type == "phone": # <--- THIS IS THE FIX
         if not NUMBER_API:
             conn.close()
             return jsonify({"error": "Number API not configured."}), 500
@@ -265,4 +265,3 @@ if ENABLE_ADMIN_PANEL:
 if __name__ == '__main__':
     # dev server (debug True for local testing)
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
-    
