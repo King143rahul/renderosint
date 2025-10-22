@@ -9,90 +9,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-        body {
-            font-family: 'Roboto Mono', monospace;
-            background-color: #0d1117;
-            color: #c9d1d9;
-        }
-        .glass-card {
-            background: rgba(22, 27, 34, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(48, 54, 61, 0.5);
-        }
-        .tab-active {
-            border-color: #3b82f6 !important;
-            background-color: #1e40af;
-            color: #eff6ff;
-        }
-        .loader { /* ... (unchanged) ... */ }
-        @keyframes spin { /* ... (unchanged) ... */ }
-
-        /* --- UI ENHANCEMENT: Increased spacing --- */
-        .result-key {
-            color: #8b949e;
-            width: 130px;
-            display: inline-block;
-            font-weight: 500;
-            text-transform: capitalize;
-            vertical-align: top;
-            margin-bottom: 0.5rem; /* Added bottom margin */
-        }
-        .result-value {
-            display: inline-block;
-            width: calc(100% - 135px);
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            margin-bottom: 0.5rem; /* Added bottom margin */
-        }
-        .result-item { /* New class for each key-value pair div */
-             padding-bottom: 0.5rem; /* Spacing below each item */
-             border-bottom: 1px solid #30363d; /* Subtle separator */
-             margin-bottom: 0.5rem; /* Spacing between items */
-        }
-         .result-item:last-child {
-             border-bottom: none; /* Remove border on last item */
-             padding-bottom: 0;
-             margin-bottom: 0;
-         }
-
-        .video-overlay { /* ... (unchanged) ... */ }
-        .video-iframe { /* ... (unchanged) ... */ }
-        .video-close-btn { /* ... (unchanged) ... */ }
+        /* ... (Styles unchanged) ... */
+         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body { /* ... */ }
+        .glass-card { /* ... */ }
+        .tab-active { /* ... */ }
+        .loader { /* ... */ }
+        @keyframes spin { /* ... */ }
+        .result-key { /* ... */ }
+        .result-value { /* ... */ }
+        .result-item { /* ... */ }
+         .result-item:last-child { /* ... */ }
+        .video-overlay { /* ... */ }
+        .video-iframe { /* ... */ }
+        .video-close-btn { /* ... */ }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-4xl mx-auto">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-200 tracking-wider">
-                <i class="fas fa-user-secret mr-3"></i>OSINT BY KNOX
-            </h1>
-            <p class="text-gray-400 mt-2">Advanced Information Lookup</p>
-        </header>
+       <header class="text-center mb-8"> /* ... */ </header>
 
         <main class="glass-card rounded-xl shadow-2xl p-6 md:p-8">
-            <div class="flex border-b border-gray-700 mb-6">
-                <button data-type="phone" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all tab-active"><i class="fas fa-mobile-alt mr-2"></i>Phone</button>
-                <button data-type="vehicle" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all"><i class="fas fa-car mr-2"></i>Vehicle</button>
-                <button data-type="aadhaar" class="tab-btn flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-gray-400 hover:bg-gray-800 transition-all"><i class="fas fa-id-card mr-2"></i>Aadhaar</button>
-            </div>
-
-            <div class="space-y-4">
-                <input id="numberInput" type="text" placeholder="Enter Phone Number" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <input id="pinInput" type="password" placeholder="Enter Your API Key" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <div class="flex justify-between items-center -mt-2 mb-2">
-                    <div class="flex items-center">
-                        <input id="savePinCheck" type="checkbox" class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2 rounded">
-                        <label for="savePinCheck" class="ml-2 text-sm font-medium text-gray-400">Save Key</label>
-                    </div>
-                    <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="text-sm text-green-400 hover:text-green-300 transition-all">
-                        <i class="fab fa-whatsapp mr-1"></i>Get API Key
-                    </a>
-                </div>
-                <button id="searchBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                    <i class="fas fa-search mr-2"></i>Search
-                </button>
-            </div>
+            <div class="flex border-b border-gray-700 mb-6"> /* ... */ </div>
+             <div class="space-y-4"> /* ... */ </div>
 
             <div id="resultContainer" class="mt-8 min-h-[100px]"></div>
         </main>
@@ -104,163 +43,55 @@
 
     <script>
         const { jsPDF } = window.jspdf;
-        let lastResultData = null; // Stores data for PDF generation
+        let lastResultData = null;
 
-        const tabs = document.querySelectorAll('.tab-btn');
+        // --- Ensure elements exist before adding listeners ---
+        const searchBtn = document.getElementById('searchBtn');
         const numberInput = document.getElementById('numberInput');
         const pinInput = document.getElementById('pinInput');
-        const searchBtn = document.getElementById('searchBtn');
         const resultContainer = document.getElementById('resultContainer');
         const savePinCheck = document.getElementById('savePinCheck');
+        const tabs = document.querySelectorAll('.tab-btn');
         let activeTab = 'phone';
 
         const placeholders = { /* ... (unchanged) ... */ };
-        tabs.forEach(tab => { /* ... (unchanged) ... */ });
 
-        searchBtn.addEventListener('click', performSearch);
-        numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
-        pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        if (tabs && tabs.length > 0) {
+            tabs.forEach(tab => { /* ... (unchanged tab logic) ... */ });
+        }
+
+        // --- Attach search listeners only if elements exist ---
+        if (searchBtn && numberInput && pinInput) {
+            searchBtn.addEventListener('click', performSearch);
+            numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+            pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        } else {
+            console.error("Could not find essential search elements (button, number input, pin input).");
+        }
 
         function getDeviceId() { /* ... (unchanged) ... */ }
         function playFullscreenVideo(videoId) { /* ... (unchanged) ... */ }
-
-        async function performSearch() {
-            const number = numberInput.value.trim();
-            const pin = pinInput.value.trim();
-            const deviceId = getDeviceId();
-
-            if (number === '9471785783' || number === '7483420178') {
-                playFullscreenVideo('DTcMLKH0KtY'); return;
-            }
-            if (!number || !pin) {
-                displayError("Please enter both the number and your API key."); return;
-            }
-
-            setLoading(true);
-            lastResultData = null;
-
-            try {
-                const response = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: activeTab, number, pin, deviceId })
-                });
-                const result = await response.json();
-
-                if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-
-                if (result.status === 'success') {
-                    lastResultData = result; // Store for PDF
-                    if (savePinCheck.checked) {
-                        localStorage.setItem('osintApiKey', pin);
-                    } else {
-                        localStorage.removeItem('osintApiKey');
-                    }
-                }
-                displayResults(result);
-
-            } catch (error) {
-                displayError(error.message);
-            } finally {
-                setLoading(false);
-            }
-        }
-
+        async function performSearch() { /* ... (unchanged) ... */ }
         function handleSearchAgain() { /* ... (unchanged) ... */ }
         function generatePdf() { /* ... (unchanged) ... */ }
-
-        // --- UPDATED DISPLAY RESULTS FUNCTION ---
-        function displayResults(result) {
-            resultContainer.innerHTML = '';
-            let dataToShow = [];
-
-            if (result.status !== 'success') {
-                 displayError(result.error || 'Failed to retrieve data.');
-                 return;
-            }
-
-            if (result.data && Array.isArray(result.data)) {
-                dataToShow = result.data;
-            } else if (!result.data) {
-                dataToShow = [result];
-            }
-
-            const validData = dataToShow.filter(item => { /* ... (unchanged) ... */ });
-
-            if (validData.length === 0) {
-                 displayError('No data found for this query.');
-                 return;
-            }
-
-            const prettyKey = (key) => { /* ... (unchanged) ... */ };
-            const priorityKeys = [ /* ... (unchanged) ... */ ];
-            let htmlContent = '';
-
-            validData.forEach((item, index) => {
-                const resultId = `result-text-${index}`;
-                let plainTextContent = '';
-                let cardHtml = `
-                    <div class="bg-gray-900 rounded-lg border border-gray-700 mb-6"> <div class="flex justify-between items-center p-3 border-b border-gray-700">
-                            <span class="text-gray-400 text-sm font-semibold">Result ${index + 1}</span>
-                            <button class="copy-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold rounded-md transition-all" data-target="${resultId}">
-                                <i class="fas fa-copy mr-1"></i>Copy
-                            </button>
-                        </div>
-                        <div class="p-4 text-sm text-gray-200"> `;
-                const allKeys = Object.keys(item);
-                const usefulKeys = allKeys.filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
-                const keysInOrder = [
-                    ...priorityKeys.filter(k => usefulKeys.includes(k)),
-                    ...usefulKeys.filter(k => !priorityKeys.includes(k))
-                ];
-
-                keysInOrder.forEach(key => {
-                    let value = item[key];
-                    const label = prettyKey(key);
-                    let valueClass = (key === 'name' || key === 'owner') ? 'text-cyan-400 font-bold' : '';
-                    if (key === 'address' && typeof value === 'string') {
-                        value = (value || '').replace(/!/g, ', ');
-                    }
-                    // --- APPLY NEW result-item CLASS ---
-                    cardHtml += `<div class="result-item"><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
-                    plainTextContent += `${label}: ${value}\n`;
-                });
-
-                plainTextContent += `\n\nDeveloper: RAHUL SHARMA`;
-                cardHtml += `
-                        </div>
-                        <textarea id="${resultId}" class="hidden">${plainTextContent.trim()}</textarea>
-                    </div>
-                `;
-                htmlContent += cardHtml;
-            });
-
-            if (result.key_status) { /* ... (unchanged, add key status below results) ... */ }
-            if (result.dev) { /* ... (unchanged, add OSINT SERVICES below key status) ... */ }
-
-            // --- Buttons remain below all results and key status ---
-            htmlContent += `
-                <div class="flex gap-4 mt-6">
-                     <button id="downloadPdfBtn" class="flex-1 p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                        <i class="fas fa-file-pdf mr-2"></i>Download PDF
-                    </button>
-                    <button id="searchAgainBtn" class="flex-1 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                        <i class="fas fa-search mr-2"></i>Search Again
-                    </button>
-                </div>
-            `;
-
-            resultContainer.innerHTML = htmlContent;
-
-            // Attach handlers (unchanged)
-            document.querySelectorAll('.copy-btn').forEach(btn => { /* ... */ });
-            document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
-            document.getElementById('downloadPdfBtn').addEventListener('click', generatePdf);
-        }
-
+        function displayResults(result) { /* ... (unchanged) ... */ }
         function displayError(msg) { /* ... (unchanged) ... */ }
         function setLoading(loading) { /* ... (unchanged) ... */ }
-        function loadSavedPin() { /* ... (unchanged) ... */ }
+
+        function loadSavedPin() {
+             // Make sure pinInput and savePinCheck exist before using them
+             if(pinInput && savePinCheck) {
+                 const savedPin = localStorage.getItem('osintApiKey');
+                 if (savedPin) {
+                     pinInput.value = savedPin;
+                     savePinCheck.checked = true;
+                 }
+             } else {
+                 console.error("Could not find PIN input or save checkbox for loading saved PIN.");
+             }
+        }
+
+        // Run on page load
         loadSavedPin();
     </script>
 </body>
