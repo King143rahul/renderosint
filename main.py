@@ -4,6 +4,9 @@ import sqlite3
 import datetime
 import json
 import requests
+# --- MODIFICATION: Import the specific JSONDecodeError ---
+from requests.exceptions import JSONDecodeError
+# --- END OF MODIFICATION ---
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 
@@ -191,23 +194,33 @@ def search():
         conn.close()
         return jsonify({"error": "Invalid lookup type"}), 400
 
-    # --- THIS IS THE MODIFICATION ---
-    # Add a browser-like User-Agent header to pretend we are a real browser
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
-    # --- END OF MODIFICATION ---
 
+    # --- MODIFICATION: Improved error handling ---
+    response = None # Define response outside try to access it in except
     try:
-        # --- MODIFIED: Added headers=headers to the request ---
         response = requests.get(api_url, timeout=15, headers=headers)
-        response.raise_for_status()
-        api_data = response.json()
+        response.raise_for_status() # Check for HTTP errors (4xx or 5xx)
+        api_data = response.json() # Try to parse as JSON
+
+    except JSONDecodeError as json_err:
+        conn.close()
+        # This is the new error block! It runs when the response is not valid JSON.
+        response_text = response.text if response else "No response from server."
+        if not response_text:
+            response_text = "API returned an EMPTY response."
+        
+        error_message = f"API did not return valid JSON. Detail: {str(json_err)}. API Response: {response_text[:200]}..." # Show first 200 chars
+        return jsonify({"error": error_message}), 502
+        
     except Exception as e:
         conn.close()
-        # Return the specific exception message for debugging
+        # This catches other errors (timeouts, connection refused, etc.)
         error_message = f"Failed to fetch data from external API. Detail: {str(e)}"
         return jsonify({"error": error_message}), 502
+    # --- END OF MODIFICATION ---
 
     conn.execute("UPDATE keys SET used_today = used_today + 1 WHERE pin = ?", (pin,))
     conn.commit()
@@ -337,3 +350,4 @@ if ENABLE_ADMIN_PANEL:
 # --- Run ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
+    
