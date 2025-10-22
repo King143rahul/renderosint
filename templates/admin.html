@@ -12,6 +12,7 @@
         .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
         .modal-content { background-color:#161b22; }
         .hidden { display: none !important; }
+        .icon-disabled { color: #444; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -50,9 +51,10 @@
                         <tr>
                             <th class="p-3 text-sm font-semibold">API Key (PIN)</th>
                             <th class="p-3 text-sm font-semibold">Usage (Today/Limit)</th>
-                            <th class="p-3 text-sm font-semibold">Expires On</th>
-                            <th class="p-3 text-sm font-semibold">Created On</th>
-                            <th class="p-3 text-sm font-semibold text-right">Action</th>
+                            <th class="p-3 text-sm font-semibold">Expires</th>
+                            <th class="p-3 text-sm font-semibold">Permissions</th>
+                            <th class.p-3 text-sm font-semibold">Device Lock</th>
+                            <th class="p-3 text-sm font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="keys-table-body">
@@ -71,6 +73,25 @@
                 <label class="text-sm text-gray-400">Expiry Date (Optional)</label>
                 <input id="new-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg" min="">
             </div>
+            
+            <div>
+                <label class="text-sm text-gray-400">Permissions</label>
+                <div class="flex gap-4 mt-2">
+                    <label class="flex items-center">
+                        <input id="new-allow-phone" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
+                        <span class="ml-2 text-gray-300">Phone</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input id="new-allow-vehicle" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
+                        <span class="ml-2 text-gray-300">Vehicle</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input id="new-allow-aadhaar" type="checkbox" checked class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 rounded">
+                        <span class="ml-2 text-gray-300">Aadhaar</span>
+                    </label>
+                </div>
+            </div>
+            
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
             <div class="flex gap-4">
                 <button id="confirm-add-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
@@ -85,7 +106,6 @@
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // Loading state helper functions
         function setLoading(button, isLoading, originalText) {
             if (isLoading) {
                 button.disabled = true;
@@ -109,6 +129,10 @@
         const newLimitInput = document.getElementById('new-limit');
         const newExpiryInput = document.getElementById('new-expiry');
         const modalError = document.getElementById('modal-error');
+        // New permission inputs
+        const newAllowPhone = document.getElementById('new-allow-phone');
+        const newAllowVehicle = document.getElementById('new-allow-vehicle');
+        const newAllowAadhaar = document.getElementById('new-allow-aadhaar');
 
         let isLoggedIn = false;
 
@@ -151,7 +175,6 @@
             try {
                 const response = await fetch(window.location.origin + '/admin/keys', { method: 'GET' });
                 if (!response.ok) {
-                    // Not logged in or other error -> show login
                     showLogin();
                     return;
                 }
@@ -170,7 +193,7 @@
         function renderKeys(keys) {
             keysTableBody.innerHTML = '';
             if (!keys || keys.length === 0) {
-                keysTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
+                keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
                 return;
             }
             keys.forEach(key => {
@@ -179,21 +202,34 @@
                 const expiryDateObj = key.expiry ? new Date(key.expiry) : null;
                 const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
                 const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
-                const createdDate = key.created_at ? new Date(key.created_at).toLocaleString() : '';
+                
+                // Build permission icons
+                const perms = `
+                    <i class="fas fa-mobile-alt fa-fw ${key.allow_phone ? 'text-green-500' : 'icon-disabled'}" title="Phone"></i>
+                    <i class="fas fa-car fa-fw ${key.allow_vehicle ? 'text-green-500' : 'icon-disabled'}" title="Vehicle"></i>
+                    <i class="fas fa-id-card fa-fw ${key.allow_aadhaar ? 'text-green-500' : 'icon-disabled'}" title="Aadhaar"></i>
+                `;
+                
+                // Build device lock status
+                const deviceLock = key.device_id
+                    ? `<i class="fas fa-lock text-yellow-500" title="${key.device_id}"></i>`
+                    : `<i class="fas fa-lock-open text-gray-500" title="Not locked"></i>`;
 
                 row.innerHTML = `
                     <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
                     <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
                     <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
-                    <td class="p-3 text-sm text-gray-400">${createdDate}</td>
+                    <td class="p-3 text-lg">${perms}</td>
+                    <td class="p-3 text-lg text-center">${deviceLock}</td>
                     <td class="p-3 text-right">
-                        <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}"><i class="fas fa-trash"></i></button>
+                        <button class="reset-device-btn px-3 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Reset Device Lock"><i class="fas fa-key"></i></button>
+                        <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete Key"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 keysTableBody.appendChild(row);
             });
 
-            // attach delete handlers
+            // --- ATTACH DELETE HANDLERS ---
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -208,8 +244,7 @@
                         });
                         const json = await res.json();
                         if (json.success) {
-                            const row = document.querySelector(`tr[data-key-id='${id}']`);
-                            if (row) row.remove();
+                            await loadKeys(); // Reload all keys
                         } else {
                             alert('Delete error: ' + (json.error || 'unknown'));
                             setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
@@ -218,6 +253,34 @@
                         alert('Network error while deleting.');
                         console.error(err);
                         setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+                    }
+                });
+            });
+            
+            // --- NEW: ATTACH RESET DEVICE HANDLERS ---
+            document.querySelectorAll('.reset-device-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (!confirm('Reset the device lock for this key?')) return;
+                    const resetBtn = e.currentTarget;
+                    setLoading(resetBtn, true, '<i class="fas fa-key"></i>');
+                    try {
+                        const res = await fetch(window.location.origin + '/admin/reset_device', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: parseInt(id, 10) })
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                            await loadKeys(); // Reload all keys to show new status
+                        } else {
+                            alert('Reset error: ' + (json.error || 'unknown'));
+                            setLoading(resetBtn, false, '<i class="fas fa-key"></i>');
+                        }
+                    } catch (err) {
+                        alert('Network error while resetting.');
+                        console.error(err);
+                        setLoading(resetBtn, false, '<i class="fas fa-key"></i>');
                     }
                 });
             });
@@ -230,6 +293,10 @@
             newLimitInput.value = '';
             newExpiryInput.value = '';
             modalError.textContent = '';
+            // Reset permission checkboxes
+            newAllowPhone.checked = true;
+            newAllowVehicle.checked = true;
+            newAllowAadhaar.checked = true;
             addKeyModal.classList.remove('hidden');
         }
 
@@ -240,18 +307,33 @@
         async function handleAddKey() {
             modalError.textContent = '';
             setLoading(confirmAddBtn, true, '<i class="fas fa-plus mr-2"></i>Create Key');
+            
             const pin = newPinInput.value.trim();
             const limit = parseInt(newLimitInput.value || '10', 10);
             const expiry = newExpiryInput.value || null;
+            // Get permission values
+            const allow_phone = newAllowPhone.checked;
+            const allow_vehicle = newAllowVehicle.checked;
+            const allow_aadhaar = newAllowAadhaar.checked;
+
             if (!pin) {
                 modalError.textContent = 'PIN cannot be empty.';
+                setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
                 return;
             }
+            
             try {
                 const res = await fetch(window.location.origin + '/admin/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin, limit, expiry })
+                    body: JSON.stringify({ 
+                        pin, 
+                        limit, 
+                        expiry, 
+                        allow_phone, 
+                        allow_vehicle, 
+                        allow_aadhaar 
+                    })
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -259,12 +341,12 @@
                     closeAddModal();
                 } else {
                     modalError.textContent = json.error || 'Failed to add key.';
-                    setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
                 }
             } catch (err) {
                 modalError.textContent = 'Network error.';
                 console.error(err);
-                setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
+            } finally {
+                 setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
             }
         }
 
@@ -284,7 +366,6 @@
         if (confirmAddBtn) confirmAddBtn.addEventListener('click', handleAddKey);
         if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-        // On load, try to load keys (will redirect to login view if not logged in)
         loadKeys();
     </script>
 </body>
