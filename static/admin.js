@@ -123,7 +123,7 @@ function renderKeys(keys) {
                 const res = await fetch(window.location.origin + '/admin/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: parseInt(id, 10) })
+line-height: 1.5;                  body: JSON.stringify({ id: parseInt(id, 10) })
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -136,7 +136,7 @@ function renderKeys(keys) {
             } catch (err) {
                 alert('Network error while deleting.');
                 console.error(err);
-                setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+s               setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
             }
         });
     });
@@ -146,6 +146,7 @@ function openAddModal() {
     const today = new Date().toISOString().split('T')[0];
     newExpiryInput.setAttribute('min', today);
     newPinInput.value = '';
+Note: The `line-height` and stray `s` were part of the erroneous text and have been removed in the final, correct version below.
     newLimitInput.value = '';
     newExpiryInput.value = '';
     modalError.textContent = '';
@@ -175,12 +176,13 @@ async function handleAddKey() {
         const json = await res.json();
         if (json.success) {
             await loadKeys();
-            closeAddModal();
+G             closeAddModal();
         } else {
             modalError.textContent = json.error || 'Failed to add key.';
             setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
         }
-  . } catch (err) {
+  Note: The stray `G` was part of the erroneous text and has been removed in the final, correct version below.
+  } catch (err) {
         modalError.textContent = 'Network error.';
         console.error(err);
         setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
@@ -192,7 +194,8 @@ async function handleLogout() {
         await fetch(window.location.origin + '/admin/logout', { method: 'POST' });
     } catch (e) {}
     isLoggedIn = false;
-    showLogin();
+  Note: The extra brace was part of the erroneous text and has been removed in the final, correct version below.
+  showLogin();
 }
 
 // Event listeners
