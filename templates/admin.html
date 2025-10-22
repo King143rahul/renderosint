@@ -7,25 +7,53 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        /* ... (Styles unchanged) ... */
+         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         body { font-family: 'Roboto Mono', monospace; background-color:#0d1117; color:#c9d1d9; }
         .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
         .modal-content { background-color:#161b22; }
         .hidden { display: none !important; }
-        #new-key-type { /* ... (unchanged) ... */ }
-        #new-key-type option { /* ... (unchanged) ... */ }
-        /* Style for truncated device ID */
+        #new-key-type {
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%239ca3af%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%20clip-rule%3D%22evenodd%22%20%2F%3E%3C%2Fsvg%3E');
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            color: #c9d1d9;
+        }
+        #new-key-type option {
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
         .device-id-display {
              font-family: monospace;
              font-size: 0.8em;
-             color: #6e7681; /* Lighter gray */
-             cursor: help; /* Indicate it's hoverable */
+             color: #6e7681;
+             cursor: help;
         }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
     <div id="login-view" class="flex items-center justify-center min-h-screen">
+       <div class="w-full max-w-md">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-200"><i class="fas fa-user-shield mr-3"></i>Admin Panel</h1>
+                <p class="text-gray-400 mt-2">OSINT by KNOX</p>
+            </header>
+            <main class="glass-card rounded-xl shadow-2xl p-8 space-y-6">
+                <div>
+                    <input id="username" placeholder="Admin Username" value="RAHUL" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <input id="password" type="password" placeholder="Admin Password" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button id="loginBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">Login</button>
+                <div id="login-error" class="text-red-400 text-center text-sm"></div>
+            </main>
         </div>
+    </div>
 
     <div id="dashboard-view" class="hidden w-full max-w-7xl mx-auto">
         <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
@@ -45,7 +73,8 @@
                             <th class="p-3 text-sm font-semibold">Usage</th>
                             <th class="p-3 text-sm font-semibold">Expires</th>
                             <th class="p-3 text-sm font-semibold">Key Type</th>
-                            <th class="p-3 text-sm font-semibold">Device ID</th> <th class="p-3 text-sm font-semibold text-right">Actions</th>
+                            <th class="p-3 text-sm font-semibold">Device ID</th>
+                            <th class="p-3 text-sm font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="keys-table-body">
@@ -56,7 +85,30 @@
     </div>
 
     <div id="add-key-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden">
-       </div>
+       <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
+            <h2 class="text-2xl font-bold">Add New API Key</h2>
+            <input id="new-pin" placeholder="Enter new PIN" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <input id="new-limit" type="number" placeholder="Daily Search Limit (e.g., 10)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <div>
+                <label class="text-sm text-gray-400">Expiry Date (Optional)</label>
+                <input id="new-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg" min="">
+            </div>
+            <div>
+                <label for="new-key-type" class="text-sm text-gray-400">Key Type</label>
+                <select id="new-key-type" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <option value="universal" selected>Universal (All Tools)</option>
+                    <option value="phone">Phone Only</option>
+                    <option value="vehicle">Vehicle Only</option>
+                    <option value="aadhaar">Aadhaar Only</option>
+                </select>
+            </div>
+            <div id="modal-error" class="text-red-400 text-center text-sm"></div>
+            <div class="flex gap-4">
+                <button id="confirm-add-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
+                <button id="cancel-add-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const loginView = document.getElementById('login-view');
@@ -88,38 +140,51 @@
         function showDashboard(keys) { /* ... (unchanged) ... */ }
         async function handleLogin() { /* ... (unchanged) ... */ }
 
-        // --- IMPROVED loadKeys to handle potential session loss ---
+        // --- FIXED loadKeys FUNCTION ---
         async function loadKeys() {
             try {
                 const response = await fetch(window.location.origin + '/admin/keys', { method: 'GET' });
+
+                // Check for non-200 responses FIRST
                 if (!response.ok) {
-                    if (response.status === 401) { // Unauthorized
-                         console.error('Session expired or invalid. Redirecting to login.');
-                         isLoggedIn = false;
-                         showLogin();
+                    if (response.status === 401) { // Unauthorized specifically
+                        console.error('Session expired or invalid. Redirecting to login.');
+                        isLoggedIn = false;
+                        showLogin();
                     } else {
-                         console.error('Failed to load keys:', response.statusText);
-                         alert('Failed to load keys. Please try refreshing.');
+                        // Other HTTP errors (e.g., 500)
+                        console.error('Failed to load keys (HTTP Status):', response.status, response.statusText);
+                        alert(`Error loading keys: ${response.statusText}. Please check server logs.`);
+                        // Maybe don't redirect to login here, allow user to retry? Or show error on dashboard?
                     }
                     return; // Stop execution if keys failed to load
                 }
-                const result = await response.json();
+
+                // Try to parse JSON only if response was OK
+                const result = await response.json(); // This can fail if response is not JSON
+
                 if (result.success) {
                     showDashboard(result.keys);
                 } else {
                     console.error('API Error loading keys:', result.error);
-                    showLogin(); // Show login on API error
+                     alert('API Error: ' + (result.error || 'Unknown error')); // Show API error
+                    // Decide if you want to force logout on API error
+                    // isLoggedIn = false;
+                    // showLogin();
                 }
             } catch (err) {
-                console.error('Network error loading keys:', err);
-                alert('Network error loading keys. Check connection and server.');
-                showLogin(); // Show login on network error
+                // This catches NETWORK errors (fetch failed) OR JSON PARSING errors
+                console.error('Network or Parsing error loading keys:', err);
+                alert('Network error loading keys. Check connection and server.'); // Keep this alert
+                // Don't necessarily force logout on temporary network issues
+                // isLoggedIn = false;
+                // showLogin();
             }
         }
 
-        // --- UPDATED renderKeys FUNCTION ---
-        function renderKeys(keys) {
-            keysTableBody.innerHTML = '';
+
+        function renderKeys(keys) { /* ... (unchanged - includes Device ID display) ... */
+             keysTableBody.innerHTML = '';
             if (!keys || keys.length === 0) {
                 keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
                 return;
@@ -131,12 +196,21 @@
                 const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
                 const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
 
-                let keyTypeStr = ''; /* ... (unchanged) ... */
+                let keyTypeStr = '';
+                if (key.allow_phone && key.allow_vehicle && key.allow_aadhaar) {
+                    keyTypeStr = '<span class="font-bold text-green-500">Universal</span>';
+                } else if (key.allow_phone) {
+                    keyTypeStr = 'Phone Only';
+                } else if (key.allow_vehicle) {
+                    keyTypeStr = 'Vehicle Only';
+                } else if (key.allow_aadhaar) {
+                    keyTypeStr = 'Aadhaar Only';
+                } else {
+                    keyTypeStr = '<span class="text-red-500">None</span>';
+                }
 
-                // --- NEW: Display Device ID (Truncated) ---
                 let deviceIdDisplay = '<span class="text-gray-500">N/A</span>';
                 if (key.device_id) {
-                     // Show first 8 and last 4 chars, e.g., device-1...a3b4
                      const truncatedId = key.device_id.length > 12
                           ? `${key.device_id.substring(0, 8)}...${key.device_id.substring(key.device_id.length - 4)}`
                           : key.device_id;
@@ -148,94 +222,98 @@
                     <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
                     <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
                     <td class="p-3 text-sm">${keyTypeStr}</td>
-                    <td class="p-3 text-center">${deviceIdDisplay}</td> <td class="p-3 text-right">
+                    <td class="p-3 text-center">${deviceIdDisplay}</td>
+                    <td class="p-3 text-right">
                         <button class="reset-device-btn px-3 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Reset Device Lock"><i class="fas fa-key"></i></button>
                         <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete Key"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 keysTableBody.appendChild(row);
             });
-
-            // Attach handlers (Wrapper functions to handle potential errors and reload)
-            attachActionHandlers();
+            attachActionHandlers(); // Re-attach handlers after rendering
         }
 
-        // --- NEW: Wrapper function for attaching handlers ---
+        // --- FIXED attachActionHandlers to prevent multiple clicks ---
         function attachActionHandlers() {
-            // Remove old listeners to prevent duplicates if called multiple times
-             document.querySelectorAll('.delete-btn').forEach(btn => btn.replaceWith(btn.cloneNode(true)));
-             document.querySelectorAll('.reset-device-btn').forEach(btn => btn.replaceWith(btn.cloneNode(true)));
-
-            // Attach DELETE handlers
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (!confirm('Delete this key?')) return;
-                    const deleteBtn = e.currentTarget;
-                    const originalHtml = deleteBtn.innerHTML; // Store original HTML
-                    setLoading(deleteBtn, true, ''); // Use empty string, will be replaced
-                    try {
-                        const res = await fetch(window.location.origin + '/admin/delete', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: parseInt(id, 10) })
-                        });
-                         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); // Check HTTP status
-                        const json = await res.json();
-                        if (json.success) {
-                            await loadKeys(); // Reload keys on success
-                        } else {
-                            alert('Delete error: ' + (json.error || 'unknown'));
-                            setLoading(deleteBtn, false, originalHtml); // Restore original HTML on error
-                        }
-                    } catch (err) {
-                        alert('Network or server error while deleting.');
-                        console.error(err);
-                        setLoading(deleteBtn, false, originalHtml); // Restore on network error
-                    }
-                });
-            });
-
-            // Attach RESET DEVICE handlers
-            document.querySelectorAll('.reset-device-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (!confirm('Reset the device lock for this key?')) return;
-                    const resetBtn = e.currentTarget;
-                     const originalHtml = resetBtn.innerHTML;
-                    setLoading(resetBtn, true, '');
-                    try {
-                        const res = await fetch(window.location.origin + '/admin/reset_device', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: parseInt(id, 10) })
-                        });
-                         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                        const json = await res.json();
-                        if (json.success) {
-                            await loadKeys(); // Reload keys on success
-                        } else {
-                            alert('Reset error: ' + (json.error || 'unknown'));
-                            setLoading(resetBtn, false, originalHtml);
-                        }
-                    } catch (err) {
-                        alert('Network or server error while resetting.');
-                        console.error(err);
-                        setLoading(resetBtn, false, originalHtml);
-                    }
-                });
-            });
+            // Use event delegation on the table body for efficiency and simplicity
+            keysTableBody.removeEventListener('click', handleTableClick); // Remove old listener first
+            keysTableBody.addEventListener('click', handleTableClick);
         }
 
+        // --- NEW: Single event handler for table clicks ---
+        async function handleTableClick(e) {
+            const targetButton = e.target.closest('button'); // Find the button that was clicked
+            if (!targetButton) return; // Exit if click wasn't on a button
+
+            const id = targetButton.getAttribute('data-id');
+            if (!id) return; // Exit if button has no data-id
+
+            // Handle DELETE button
+            if (targetButton.classList.contains('delete-btn')) {
+                if (!confirm('Delete this key?')) return;
+                const originalHtml = targetButton.innerHTML;
+                setLoading(targetButton, true, '');
+                try {
+                    const res = await fetch(window.location.origin + '/admin/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: parseInt(id, 10) })
+                    });
+                    if (!res.ok) { // Check HTTP status first
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText || res.statusText}`);
+                    }
+                    const json = await res.json();
+                    if (json.success) {
+                        await loadKeys(); // Reload keys on success
+                    } else {
+                        alert('Delete error: ' + (json.error || 'unknown'));
+                        setLoading(targetButton, false, originalHtml); // Restore only on error
+                    }
+                } catch (err) {
+                    alert('Network or server error while deleting: ' + err.message);
+                    console.error(err);
+                    setLoading(targetButton, false, originalHtml);
+                }
+            }
+            // Handle RESET DEVICE button
+            else if (targetButton.classList.contains('reset-device-btn')) {
+                if (!confirm('Reset the device lock for this key?')) return;
+                const originalHtml = targetButton.innerHTML;
+                setLoading(targetButton, true, '');
+                try {
+                    const res = await fetch(window.location.origin + '/admin/reset_device', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: parseInt(id, 10) })
+                    });
+                     if (!res.ok) { // Check HTTP status first
+                        const errorText = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errorText || res.statusText}`);
+                     }
+                    const json = await res.json();
+                    if (json.success) {
+                        await loadKeys(); // Reload keys on success
+                    } else {
+                        alert('Reset error: ' + (json.error || 'unknown'));
+                         setLoading(targetButton, false, originalHtml); // Restore only on error
+                    }
+                } catch (err) {
+                    alert('Network or server error while resetting: ' + err.message);
+                    console.error(err);
+                     setLoading(targetButton, false, originalHtml);
+                }
+            }
+        }
 
         function openAddModal() { /* ... (unchanged) ... */ }
         function closeAddModal() { /* ... (unchanged) ... */ }
 
-        // --- IMPROVED handleAddKey ---
+        // --- FIXED handleAddKey to restore button correctly ---
         async function handleAddKey() {
             modalError.textContent = '';
             const originalHtml = confirmAddBtn.innerHTML;
-            setLoading(confirmAddBtn, true, ''); // Use empty string
+            setLoading(confirmAddBtn, true, '');
 
             const pin = newPinInput.value.trim();
             const limit = parseInt(newLimitInput.value || '10', 10);
@@ -244,33 +322,39 @@
 
             if (!pin) {
                 modalError.textContent = 'PIN cannot be empty.';
-                setLoading(confirmAddBtn, false, originalHtml); // Restore button
+                setLoading(confirmAddBtn, false, originalHtml);
                 return;
             }
 
+            let success = false; // Flag to check if operation succeeded
             try {
                 const res = await fetch(window.location.origin + '/admin/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ pin, limit, expiry, key_type })
                 });
-                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                 if (!res.ok) { // Check HTTP status first
+                    const errorText = await res.text();
+                    throw new Error(`HTTP ${res.status}: ${errorText || res.statusText}`);
+                 }
                 const json = await res.json();
                 if (json.success) {
-                    closeAddModal(); // Close modal first
-                    await loadKeys(); // Then reload keys
+                    closeAddModal();
+                    await loadKeys();
+                    success = true; // Mark as success
                 } else {
                     modalError.textContent = json.error || 'Failed to add key.';
-                    setLoading(confirmAddBtn, false, originalHtml); // Restore button only on error
                 }
             } catch (err) {
-                modalError.textContent = 'Network or server error.';
+                modalError.textContent = 'Network or server error: ' + err.message;
                 console.error(err);
-                setLoading(confirmAddBtn, false, originalHtml); // Restore button on network error
+            } finally {
+                // Only restore the button if the operation failed
+                if (!success) {
+                    setLoading(confirmAddBtn, false, originalHtml);
+                }
             }
-            // Note: Button state is restored *only* on error now
         }
-
 
         async function handleLogout() { /* ... (unchanged) ... */ }
 
