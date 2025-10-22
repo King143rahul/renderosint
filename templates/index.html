@@ -35,6 +35,13 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Style for the key-value pairs */
+        .result-key {
+            color: #8b949e; /* Lighter gray */
+            width: 110px;
+            display: inline-block;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -72,7 +79,7 @@
         </main>
         
         <footer class="text-center mt-8">
-            <p class="text-gray-500 text-sm">developed by <span class="font-bold text-gray-400">RAHUL SHARMA</span></p>
+            <p class="text-gray-500 text-sm">OSINT Portal</p>
         </footer>
     </div>
 
@@ -132,8 +139,113 @@
             }
         }
 
+        // --- NEW, PRETTY DISPLAY FUNCTION ---
         function displayResults(result) {
-            resultContainer.innerHTML = `<pre class="text-gray-300 text-sm bg-gray-900 p-4 rounded-lg overflow-x-auto">${JSON.stringify(result, null, 2)}</pre>`;
+            // Clear previous results
+            resultContainer.innerHTML = '';
+
+            // Check for valid data
+            if (result.status !== 'success' || !result.data || result.data.length === 0) {
+                displayError(result.error || 'No data found for this query.');
+                return;
+            }
+
+            let htmlContent = '';
+            
+            // Loop through each result in the 'data' array
+            result.data.forEach((item, index) => {
+                const resultId = `result-text-${index}`;
+                let plainTextContent = ''; // For the copy button
+
+                // Build the HTML for this result card
+                let cardHtml = `
+                    <div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">
+                        <div class="flex justify-between items-center p-3 border-b border-gray-700">
+                            <span class="text-gray-400 text-sm font-semibold">Result ${index + 1}</span>
+                            <button class="copy-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold rounded-md transition-all" data-target="${resultId}">
+                                <i class="fas fa-copy mr-1"></i>Copy
+                            </button>
+                        </div>
+                        <div class="p-4 space-y-2 text-sm text-gray-200">
+                `;
+
+                // Add key-value pairs
+                if (item.name) {
+                    cardHtml += `<div><span class="result-key">Name</span>: <span class="text-cyan-400 font-bold">${item.name}</span></div>`;
+                    plainTextContent += `Name: ${item.name}\n`;
+                }
+                if (item.mobile) {
+                    cardHtml += `<div><span class="result-key">Mobile</span>: <span class="font-mono">${item.mobile}</span></div>`;
+                    plainTextContent += `Mobile: ${item.mobile}\n`;
+                }
+                if (item.fname) {
+                    cardHtml += `<div><span class="result-key">Father's Name</span>: <span>${item.fname}</span></div>`;
+                    plainTextContent += `Father's Name: ${item.fname}\n`;
+                }
+                if (item.address) {
+                    const prettyAddress = item.address.replace(/!/g, ', '); // Make address readable
+                    cardHtml += `<div><span class="result-key align-top">Address</span>: <span class="inline-block w-[calc(100%-120px)]">${prettyAddress}</span></div>`;
+                    plainTextContent += `Address: ${prettyAddress}\n`;
+                }
+                if (item.circle) {
+                    cardHtml += `<div><span class="result-key">Circle</span>: <span>${item.circle}</span></div>`;
+                    plainTextContent += `Circle: ${item.circle}\n`;
+                }
+                if (item.id) {
+                    cardHtml += `<div><span class="result-key">ID</span>: <span class="font-mono">${item.id}</span></div>`;
+                    plainTextContent += `ID: ${item.id}\n`;
+                }
+
+                cardHtml += `
+                        </div>
+                        <textarea id="${resultId}" class="hidden">${plainTextContent.trim()}</textarea>
+                    </div>
+                `;
+                htmlContent += cardHtml;
+            });
+
+            // Add Key Status
+            if (result.key_status) {
+                htmlContent += `
+                    <div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2">
+                        <span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span>
+                        <span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span>
+                    </div>
+                `;
+            }
+            
+            // Add Developer Name
+            if (result.dev) {
+                htmlContent += `
+                    <div class="text-center text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
+                        Developer: ${result.dev}
+                    </div>
+                `;
+            }
+
+            // Set the final HTML
+            resultContainer.innerHTML = htmlContent;
+
+            // Attach click handlers to all new copy buttons
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const button = e.currentTarget;
+                    const targetId = button.dataset.target;
+                    const textToCopy = document.getElementById(targetId).value;
+                    
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                        button.classList.add('bg-green-700', 'text-white');
+                        setTimeout(() => {
+                            button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy';
+                            button.classList.remove('bg-green-700', 'text-white');
+                        }, 2000);
+                    }, (err) => {
+                        button.textContent = 'Failed';
+                        console.error('Failed to copy: ', err);
+                    });
+                });
+            });
         }
 
         function displayError(msg) {
