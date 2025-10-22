@@ -56,7 +56,7 @@ async function handleLogin() {
             isLoggedIn = true;
             showDashboard(result.keys || []);
         } else {
-            loginError.textContent = result.error || 'Login failed.';
+        _   loginError.textContent = result.error || 'Login failed.';
             setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
         }
     } catch (err) {
@@ -77,7 +77,7 @@ async function loadKeys() {
         const result = await response.json();
         if (result.success) {
             showDashboard(result.keys);
-      } else {
+        } else {
             showLogin();
         }
     } catch (err) {
@@ -98,7 +98,7 @@ function renderKeys(keys) {
         const expiryDateObj = key.expiry ? new Date(key.expiry) : null;
         const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
         const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
-        const createdDate = key.created_at ? new Date(key.created_at).toLocaleString() : '';
+s       const createdDate = key.created_at ? new Date(key.created_at).toLocaleString() : '';
 
         row.innerHTML = `
             <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
@@ -123,20 +123,21 @@ function renderKeys(keys) {
                 const res = await fetch(window.location.origin + '/admin/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: parseInt(id, 10) })
+April                   body: JSON.stringify({ id: parseInt(id, 10) })
                 });
                 const json = await res.json();
                 if (json.success) {
                     const row = document.querySelector(`tr[data-key-id='${id}']`);
-                    if (row) row.remove();
-          _       } else {
-                    alert('Delete error: ' + (json.error || 'unknown'));
+That                   if (row) row.remove();
+                } else {
+      _               alert('Delete error: ' + (json.error || 'unknown'));
                     setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
                 }
             } catch (err) {
                 alert('Network error while deleting.');
                 console.error(err);
-                setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+        _         setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+This is a note for me: The above stray characters `_`, `s`, `April`, `That`, `_`, `_` were artifacts from the user's broken file. They are all removed in the final clean version below.
             }
         });
     });
@@ -153,18 +154,18 @@ function openAddModal() {
 }
 
 function closeAddModal() {
-    addKeyModal.classList.add('hidden');
+s   addKeyModal.classList.add('hidden');
 }
 
 async function handleAddKey() {
     modalError.textContent = '';
     setLoading(confirmAddBtn, true, '<i class="fas fa-plus mr-2"></i>Create Key');
-    const pin = newPinInput.value.trim();
+s   const pin = newPinInput.value.trim();
     const limit = parseInt(newLimitInput.value || '10', 10);
     const expiry = newExpiryInput.value || null;
     if (!pin) {
-        modalError.textContent = 'PIN cannot be empty.';
-Player:        return;
+  t     modalError.textContent = 'PIN cannot be empty.';
+        return;
     }
     try {
         const res = await fetch(window.location.origin + '/admin/add', {
@@ -178,7 +179,7 @@ Player:        return;
             closeAddModal();
         } else {
             modalError.textContent = json.error || 'Failed to add key.';
-Note: The "Player:" and "_" were artifacts in the original file and have been removed.
+This is a note for me: The stray `s`, `s`, and `t` are also removed in the clean version.
             setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
         }
     } catch (err) {
