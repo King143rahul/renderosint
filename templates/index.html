@@ -131,13 +131,12 @@
     </div>
 
     <script>
-        // --- NO CHANGES IN THIS SECTION ---
         const tabs = document.querySelectorAll('.tab-btn');
         const numberInput = document.getElementById('numberInput');
         const pinInput = document.getElementById('pinInput');
         const searchBtn = document.getElementById('searchBtn');
         const resultContainer = document.getElementById('resultContainer');
-        const savePinCheck = document.getElementById('savePinCheck'); // Get the checkbox
+        const savePinCheck = document.getElementById('savePinCheck');
         let activeTab = 'phone';
 
         const placeholders = {
@@ -159,7 +158,17 @@
         numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         
-        // --- NEW FUNCTION: for video (unchanged) ---
+        // --- NEW FUNCTION: To get or create a unique device ID ---
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('osintDeviceId');
+            if (!deviceId) {
+                // Generate a simple unique ID
+                deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem('osintDeviceId', deviceId);
+            }
+            return deviceId;
+        }
+
         function playFullscreenVideo(videoId) {
             const overlay = document.createElement('div');
             overlay.className = 'video-overlay';
@@ -186,6 +195,7 @@
         async function performSearch() {
             const number = numberInput.value.trim();
             const pin = pinInput.value.trim();
+            const deviceId = getDeviceId(); // <-- THIS IS THE FIX
 
             // Easter egg check
             if (number === '9471785783' || number === '7483420178') {
@@ -204,17 +214,21 @@
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: activeTab, number, pin })
+                    body: JSON.stringify({ 
+                        type: activeTab, 
+                        number, 
+                        pin, 
+                        deviceId: deviceId // <-- THIS IS THE FIX
+                    })
                 });
                 const result = await response.json();
 
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
                 
-                // --- NEW: SAVE KEY LOGIC ---
                 if (result.status === 'success' && savePinCheck.checked) {
-                    localStorage.setItem('osintApiKey', pin); // Save the key on success
+                    localStorage.setItem('osintApiKey', pin);
                 } else if (!savePinCheck.checked) {
-                    localStorage.removeItem('osintApiKey'); // Forget the key if unchecked
+                    localStorage.removeItem('osintApiKey');
                 }
                 
                 displayResults(result);
@@ -226,15 +240,13 @@
             }
         }
         
-        // --- NEW FUNCTION: for "Search Again" button ---
         function handleSearchAgain() {
-            resultContainer.innerHTML = ''; // Clear results
-            numberInput.value = ''; // Clear number input
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top
-            numberInput.focus(); // Focus input
+            resultContainer.innerHTML = '';
+            numberInput.value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            numberInput.focus();
         }
 
-        // --- UPDATED DISPLAY RESULTS FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             let dataToShow = [];
@@ -340,7 +352,6 @@
                 `;
             }
 
-            // --- NEW: ADD "SEARCH AGAIN" BUTTON ---
             htmlContent += `
                 <button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
                     <i class="fas fa-search mr-2"></i>Search Again
@@ -349,7 +360,6 @@
 
             resultContainer.innerHTML = htmlContent;
 
-            // Attach copy handlers
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const button = e.currentTarget;
@@ -370,11 +380,9 @@
                 });
             });
             
-            // --- NEW: Attach search again handler ---
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
 
-        // --- UPDATED: displayError FUNCTION ---
         function displayError(msg) {
             resultContainer.innerHTML = `
                 <div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
@@ -384,7 +392,6 @@
                     <i class="fas fa-search mr-2"></i>Search Again
                 </button>
             `;
-            // Attach handler to the button
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
 
@@ -393,7 +400,6 @@
             searchBtn.innerHTML = loading ? `<div class="loader !w-6 !h-6 !border-t-white"></div>` : `<i class="fas fa-search mr-2"></i>Search`;
         }
         
-        // --- NEW: FUNCTION TO LOAD SAVED PIN ---
         function loadSavedPin() {
             const savedPin = localStorage.getItem('osintApiKey');
             if (savedPin) {
@@ -402,7 +408,6 @@
             }
         }
         
-        // Run on page load
         loadSavedPin();
     </script>
 </body>
