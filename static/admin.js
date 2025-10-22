@@ -180,11 +180,11 @@ async function handleAddKey() {
             modalError.textContent = json.error || 'Failed to add key.';
             setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
         }
-    } catch (err) {
+  . } catch (err) {
         modalError.textContent = 'Network error.';
         console.error(err);
         setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
-s   }
+    }
 }
 
 async function handleLogout() {
