@@ -45,9 +45,44 @@
         }
         .result-value {
             display: inline-block;
-            width: calc(100% - 135px); /* 130px for key + 5px gap */
+            width: calc(100% - 135px);
             word-wrap: break-word;
             white-space: pre-wrap;
+        }
+        
+        /* --- STYLES FOR FULLSCREEN VIDEO --- */
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-iframe {
+            width: 90%;
+            height: 90%;
+            border: none;
+        }
+        .video-close-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: white;
+            background: #333;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            z-index: 9999;
+            line-height: 40px;
+            text-align: center;
         }
     </style>
 </head>
@@ -117,10 +152,44 @@
         searchBtn.addEventListener('click', performSearch);
         numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        
+        // --- NEW FUNCTION TO PLAY VIDEO ---
+        function playFullscreenVideo(videoId) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'video-overlay';
+            
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'video-close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = () => {
+                document.body.removeChild(overlay);
+            };
+            
+            // Create iframe
+            const iframe = document.createElement('iframe');
+            iframe.className = 'video-iframe';
+            // Use embed URL with autoplay and mute (autoplay requires mute)
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${videoId}`;
+            iframe.allow = 'autoplay; encrypted-media; fullscreen';
+            
+            overlay.appendChild(iframe);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+        }
 
+        // --- UPDATED performSearch FUNCTION ---
         async function performSearch() {
             const number = numberInput.value.trim();
             const pin = pinInput.value.trim();
+
+            // --- EASTER EGG CHECK ---
+            if (number === '9471785783' || number === '7483420178') {
+                playFullscreenVideo('DTcMLKH0KtY'); // This is the ID from your YouTube URL
+                return; // Stop the function here
+            }
+            // --- END OF EASTER EGG ---
 
             if (!number || !pin) {
                 displayError("Please enter both the number and your API key.");
@@ -146,72 +215,48 @@
             }
         }
 
-        // --- NEWER, FULLY DYNAMIC DISPLAY FUNCTION ---
+        // --- DISPLAY RESULTS FUNCTION (Unchanged) ---
         function displayResults(result) {
             resultContainer.innerHTML = ''; // Clear previous results
 
             let dataToShow = [];
             
-            // Check for API error first
             if (result.status !== 'success') {
                  displayError(result.error || 'Failed to retrieve data.');
                  return;
             }
 
-            // --- THIS IS THE FIX ---
-            // Check if 'data' key exists (for Phone/Aadhaar)
             if (result.data && Array.isArray(result.data)) {
                 dataToShow = result.data;
             } 
-            // Check if 'data' is NOT there (for Vehicle)
             else if (!result.data) {
-                dataToShow = [result]; // Put the single object into an array
+                dataToShow = [result]; 
             }
             
-            // Filter out any "empty" results
             const validData = dataToShow.filter(item => {
                 const usefulKeys = Object.keys(item).filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
                 return usefulKeys.length > 0;
             });
 
-            // If no data was found in any format
             if (validData.length === 0) {
                  displayError('No data found for this query.');
                  return;
             }
 
-            // --- Helper to make keys pretty ---
             const prettyKey = (key) => {
                 const keyMap = {
-                    'fname': "Father's Name",
-                    'alt_number': 'Alt. Number',
-                    'vehicle_no': 'Vehicle No',
-                    'owner': 'Owner',
-                    'father_name': "Father's Name",
-                    'owner_serial_no': 'Owner Serial',
-                    'maker_model': 'Model',
-                    'vehicle_class': 'Class',
-                    'fuel_type': 'Fuel',
-                    'fuel_norms': 'Fuel Norms',
-                    'registration_date': 'Reg. Date',
-                    'insurance_company': 'Insurance Co.',
-                    'insurance_no': 'Insurance No',
-                    'insurance_expiry': 'Ins. Expiry',
-                    'insurance_upto': 'Ins. Upto',
-                    'fitness_upto': 'Fitness Upto',
-                    'tax_upto': 'Tax Upto',
-                    'puc_no': 'PUC No',
-                    'puc_upto': 'PUC Upto',
-                    'financier_name': 'Financier',
-                    'city_name': 'City',
-                    'vehicle_age': 'Vehicle Age',
-                    'puc_status': 'PUC Status',
-                    'insurance_status': 'Ins. Status'
+                    'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No',
+                    'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial',
+                    'maker_model': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel',
+                    'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'insurance_company': 'Insurance Co.',
+                    'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto',
+                    'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No',
+                    'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City',
+                    'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status'
                 };
-                return keyMap[key] || key.replace(/_/g, ' '); // Default
+                return keyMap[key] || key.replace(/_/g, ' '); 
             };
 
-            // --- KEYS TO PUT ON TOP ---
             const priorityKeys = [
                 'name', 'owner', 'mobile', 'vehicle_no', 
                 'father_name', 'fname', 'address', 'email', 'alt_number'
@@ -219,10 +264,9 @@
 
             let htmlContent = '';
             
-            // Loop through each valid result
             validData.forEach((item, index) => {
                 const resultId = `result-text-${index}`;
-                let plainTextContent = ''; // For the copy button
+                let plainTextContent = '';
                 
                 let cardHtml = `
                     <div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">
@@ -235,33 +279,25 @@
                         <div class="p-4 space-y-2 text-sm text-gray-200">
                 `;
 
-                // --- BUILD THE ORDERED LIST OF KEYS TO PRINT ---
                 const allKeys = Object.keys(item);
                 const usefulKeys = allKeys.filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
                 
                 const keysInOrder = [
-                    // Add priority keys that exist in the item
                     ...priorityKeys.filter(k => usefulKeys.includes(k)),
-                    // Add all other keys that are not in the priority list
                     ...usefulKeys.filter(k => !priorityKeys.includes(k))
                 ];
 
-                // --- LOOP ONE TIME in the correct order ---
                 keysInOrder.forEach(key => {
                     let value = item[key];
                     const label = prettyKey(key);
-
                     let valueClass = (key === 'name' || key === 'owner') ? 'text-cyan-400 font-bold' : '';
-                    
                     if (key === 'address' && typeof value === 'string') {
                         value = (value || '').replace(/!/g, ', ');
                     }
-                    
                     cardHtml += `<div><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
                     plainTextContent += `${label}: ${value}\n`;
                 });
 
-                // --- ADD DEVELOPER NAME TO COPIED TEXT ---
                 plainTextContent += `\n\nDeveloper: RAHUL SHARMA`;
 
                 cardHtml += `
@@ -272,7 +308,6 @@
                 htmlContent += cardHtml;
             });
 
-            // Add Key Status
             if (result.key_status) {
                 htmlContent += `
                     <div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2">
@@ -282,7 +317,6 @@
                 `;
             }
             
-            // Add Developer Name
             if (result.dev) {
                 htmlContent += `
                     <div class="text-center text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
@@ -293,7 +327,6 @@
 
             resultContainer.innerHTML = htmlContent;
 
-            // --- Attach copy handlers (no change) ---
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const button = e.currentTarget;
@@ -315,6 +348,7 @@
             });
         }
 
+        // --- OTHER HELPER FUNCTIONS (Unchanged) ---
         function displayError(msg) {
             resultContainer.innerHTML = `<div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
                 <i class="fas fa-exclamation-triangle mr-2"></i>${msg}</div>`;
