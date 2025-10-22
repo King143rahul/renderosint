@@ -191,17 +191,23 @@ def search():
         conn.close()
         return jsonify({"error": "Invalid lookup type"}), 400
 
+    # --- THIS IS THE MODIFICATION ---
+    # Add a browser-like User-Agent header to pretend we are a real browser
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+    # --- END OF MODIFICATION ---
+
     try:
-        response = requests.get(api_url, timeout=15)
+        # --- MODIFIED: Added headers=headers to the request ---
+        response = requests.get(api_url, timeout=15, headers=headers)
         response.raise_for_status()
         api_data = response.json()
     except Exception as e:
         conn.close()
-        # --- THIS IS THE MODIFICATION ---
-        # Returns the specific exception message to the frontend for debugging.
+        # Return the specific exception message for debugging
         error_message = f"Failed to fetch data from external API. Detail: {str(e)}"
         return jsonify({"error": error_message}), 502
-        # --- END OF MODIFICATION ---
 
     conn.execute("UPDATE keys SET used_today = used_today + 1 WHERE pin = ?", (pin,))
     conn.commit()
@@ -247,7 +253,7 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": False, "error": "Username and password are required"}), 400
             
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['is_.admin'] = True
+            session['is_admin'] = True
             conn = get_db_connection()
             keys_rows = conn.execute("SELECT * FROM keys ORDER BY created_at DESC").fetchall()
             conn.close()
