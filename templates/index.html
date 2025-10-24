@@ -141,7 +141,7 @@
 
         const placeholders = {
             phone: 'Enter Phone Number (e.g., 9876543210)',
-            vehicle: 'Enter Vehicle Number (e.g., DL01AA1234)', // --- THIS LINE IS UPDATED ---
+            vehicle: 'Enter Vehicle Number (e.g., DL01AA1234)',
             aadhaar: 'Enter Aadhaar Number (e.g., 123456789012)'
         };
 
@@ -243,7 +243,6 @@
             numberInput.focus();
         }
 
-        // This function is the one that correctly handles nested objects
         function displayResults(result) {
             resultContainer.innerHTML = '';
             let dataToShow = [];
@@ -280,8 +279,8 @@
                     'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No',
                     'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City',
                     'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status',
-                    'byekam_source': 'Byekam API Source',
-                    'vahanx_source': 'Vahanx.in Source'
+                    'byekam_source': 'Source 1 (API)',  // <-- RENAMED
+                    'vahanx_source': 'Source 2 (Scraper)' // <-- RENAMED
                 };
                 return keyMap[key] || key.replace(/_/g, ' '); 
             };
@@ -289,6 +288,12 @@
             const priorityKeys = [
                 'name', 'owner', 'mobile', 'vehicle_no', 
                 'father_name', 'fname', 'address', 'email', 'alt_number'
+            ];
+            
+            // --- NEW: List of junk keys to hide from the output ---
+            const junkKeys = [
+                'dev', 'status', 'code', 'phone', 'model', 
+                'Ins. Expiry', 'Reg. Date', 'PUC No', 'error'
             ];
 
             let htmlContent = '';
@@ -333,13 +338,17 @@
                              return;
                         }
 
-                        // Loop through the *nested* keys
-                        Object.keys(value).forEach(nestedKey => {
+                        // --- UPDATED: Loop through nested keys ---
+                        const nestedKeys = Object.keys(value);
+                        
+                        // Filter out junk keys
+                        const cleanKeys = nestedKeys.filter(k => !junkKeys.includes(k));
+
+                        cleanKeys.forEach(nestedKey => {
                             let nestedValue = value[nestedKey];
                             const nestedLabel = prettyKey(nestedKey);
                             
-                            // --- FIX for 'Not Available' in new scraper ---
-                            if (nestedValue === null || nestedValue === 'Not Available') {
+                            if (nestedValue === null || nestedValue === 'Not Available' || nestedValue === 'NA') {
                                 nestedValue = '<span class="text-gray-500">Not Available</span>';
                             }
 
@@ -350,11 +359,12 @@
                             }
                             
                             cardHtml += `<div><span class="result-key">${nestedLabel}</span>: <span class="result-value ${valueClass}">${nestedValue}</span></div>`;
-                            // Only add to plaintext if it wasn't null
-                            if(value[nestedKey] !== null) {
+                            
+                            if(value[nestedKey] !== null && value[nestedKey] !== 'Not Available' && value[nestedKey] !== 'NA') {
                                 plainTextContent += `${nestedLabel}: ${value[nestedKey]}\n`;
                             }
                         });
+                        // --- END OF UPDATED LOOP ---
 
                     } 
                     else if (typeof value !== 'object') {
@@ -382,6 +392,7 @@
                 `;
             }
             
+            // This 'dev' key check is for the *main* response, not the nested ones
             if (result.dev) {
                 htmlContent += `
                     <div class="text-center text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
