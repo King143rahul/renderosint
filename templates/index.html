@@ -141,7 +141,7 @@
 
         const placeholders = {
             phone: 'Enter Phone Number (e.g., 9876543210)',
-            vehicle: 'Enter Vehicle Number (e.g., DL12AB1234)',
+            vehicle: 'Enter Vehicle Number (e.g., DL01AA1234)', // --- THIS LINE IS UPDATED ---
             aadhaar: 'Enter Aadhaar Number (e.g., 123456789012)'
         };
 
@@ -158,11 +158,9 @@
         numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         
-        // --- NEW FUNCTION: To get or create a unique device ID ---
         function getDeviceId() {
             let deviceId = localStorage.getItem('osintDeviceId');
             if (!deviceId) {
-                // Generate a simple unique ID
                 deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
                 localStorage.setItem('osintDeviceId', deviceId);
             }
@@ -191,13 +189,11 @@
             document.body.appendChild(overlay);
         }
 
-        // --- UPDATED performSearch FUNCTION ---
         async function performSearch() {
             const number = numberInput.value.trim();
             const pin = pinInput.value.trim();
-            const deviceId = getDeviceId(); // <-- THIS IS THE FIX
+            const deviceId = getDeviceId(); 
 
-            // Easter egg check
             if (number === '9471785783' || number === '7483420178') {
                 playFullscreenVideo('DTcMLKH0KtY');
                 return;
@@ -218,7 +214,7 @@
                         type: activeTab, 
                         number, 
                         pin, 
-                        deviceId: deviceId // <-- THIS IS THE FIX
+                        deviceId: deviceId 
                     })
                 });
                 const result = await response.json();
@@ -247,6 +243,7 @@
             numberInput.focus();
         }
 
+        // This function is the one that correctly handles nested objects
         function displayResults(result) {
             resultContainer.innerHTML = '';
             let dataToShow = [];
@@ -282,7 +279,9 @@
                     'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto',
                     'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No',
                     'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City',
-                    'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status'
+                    'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status',
+                    'byekam_source': 'Byekam API Source',
+                    'vahanx_source': 'Vahanx.in Source'
                 };
                 return keyMap[key] || key.replace(/_/g, ' '); 
             };
@@ -310,20 +309,59 @@
 
                 const allKeys = Object.keys(item);
                 const usefulKeys = allKeys.filter(k => !['status', 'key_status', 'dev', 'data'].includes(k) && item[k]);
+                
                 const keysInOrder = [
-                    ...priorityKeys.filter(k => usefulKeys.includes(k)),
-                    ...usefulKeys.filter(k => !priorityKeys.includes(k))
+                    'byekam_source', 'vahanx_source',
+                    ...priorityKeys.filter(k => usefulKeys.includes(k) && !['byekam_source', 'vahanx_source'].includes(k)),
+                    ...usefulKeys.filter(k => !priorityKeys.includes(k) && !['byekam_source', 'vahanx_source'].includes(k))
                 ];
 
                 keysInOrder.forEach(key => {
+                    if (!item[key]) return;
+                    
                     let value = item[key];
                     const label = prettyKey(key);
-                    let valueClass = (key === 'name' || key === 'owner') ? 'text-cyan-400 font-bold' : '';
-                    if (key === 'address' && typeof value === 'string') {
-                        value = (value || '').replace(/!/g, ', ');
+
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0) {
+                        
+                        cardHtml += `<div class="text-cyan-400 font-bold mt-4 mb-2 uppercase border-b border-gray-700 pb-1">${label}</div>`;
+                        plainTextContent += `\n--- ${label.toUpperCase()} ---\n`;
+
+                        if (value.error) {
+                             cardHtml += `<div><span class="result-key">Error</span>: <span class="result-value text-red-400">${value.error}</span></div>`;
+                             plainTextContent += `Error: ${value.error}\n`;
+                             return;
+                        }
+
+                        // Loop through the *nested* keys
+                        Object.keys(value).forEach(nestedKey => {
+                            let nestedValue = value[nestedKey];
+                            const nestedLabel = prettyKey(nestedKey);
+                            
+                            // --- FIX for 'Not Available' in new scraper ---
+                            if (nestedValue === null || nestedValue === 'Not Available') {
+                                nestedValue = '<span class="text-gray-500">Not Available</span>';
+                            }
+
+                            let valueClass = (nestedKey === 'name' || nestedKey === 'owner' || nestedKey === 'Owner Name') ? 'text-cyan-400 font-bold' : '';
+                            
+                            if (nestedKey === 'address' && typeof nestedValue === 'string') {
+                                nestedValue = (nestedValue || '').replace(/!/g, ', ');
+                            }
+                            
+                            cardHtml += `<div><span class="result-key">${nestedLabel}</span>: <span class="result-value ${valueClass}">${nestedValue}</span></div>`;
+                            // Only add to plaintext if it wasn't null
+                            if(value[nestedKey] !== null) {
+                                plainTextContent += `${nestedLabel}: ${value[nestedKey]}\n`;
+                            }
+                        });
+
+                    } 
+                    else if (typeof value !== 'object') {
+                        let valueClass = (key === 'name' || key === 'owner') ? 'text-cyan-400 font-bold' : '';
+                        cardHtml += `<div><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
+                        plainTextContent += `${label}: ${value}\n`;
                     }
-                    cardHtml += `<div><span class="result-key">${label}</span>: <span class="result-value ${valueClass}">${value}</span></div>`;
-                    plainTextContent += `${label}: ${value}\n`;
                 });
 
                 plainTextContent += `\n\nDeveloper: RAHUL SHARMA`;
