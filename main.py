@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import os
-import sqlite3
 import datetime
 import json
 import requests
-# --- MODIFICATION: Import the specific JSONDecodeError ---
+import pymongo # <-- NEW: Import pymongo
+from pymongo.errors import DuplicateKeyError # <-- NEW
 from requests.exceptions import JSONDecodeError
-# --- END OF MODIFICATION ---
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 
@@ -27,90 +26,51 @@ def add_security_headers(response):
     return response
 
 # --- Feature flags and admin config ---
-ENABLE_ADMIN_PANEL = True 
+ENABLE_ADMIN_PANEL = True
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "RAHUL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "KNOX")
-
-# --- Production configuration ---
-if os.getenv("ENVIRONMENT") == "production":
-    app.config['SESSION_COOKIE_SECURE'] = True
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # --- External API endpoints (set these in .env) ---
 VEHICLE_API = os.getenv("VEHICLE_API", "")
 NUMBER_API = os.getenv("NUMBER_API", "")
 AADHAAR_API = os.getenv("AADHAAR_API", "")
 
-# --- Environment-provided API keys (JSON) ---
-API_KEYS_JSON = os.getenv("API_KEYS", "[]")
+# --- Database Setup (MongoDB) ---
+DB_CLIENT = None
+KEYS_COLLECTION = None
 
-# --- Database Setup ---
-DB_FILE = os.getenv("DB_FILE", "database.db")
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def initialize_database():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+def get_db_collection():
+    """Establishes a connection to MongoDB and returns the 'keys' collection."""
+    global DB_CLIENT, KEYS_COLLECTION
     
-    cursor.execute("PRAGMA table_info(keys)")
-    columns = [row[1] for row in cursor.fetchall()]
+    # Check if we already have a connection
+    if KEYS_COLLECTION is not None:
+        return KEYS_COLLECTION
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS keys (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pin TEXT UNIQUE NOT NULL,
-        limit_count INTEGER DEFAULT 10,
-        used_today INTEGER DEFAULT 0,
-        expiry TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        device_id TEXT,
-        allow_phone INTEGER DEFAULT 1,
-        allow_vehicle INTEGER DEFAULT 1,
-        allow_aadhaar INTEGER DEFAULT 1
-    )
-    """)
-    
-    if 'device_id' not in columns:
-        cursor.execute("ALTER TABLE keys ADD COLUMN device_id TEXT")
-    if 'allow_phone' not in columns:
-        cursor.execute("ALTER TABLE keys ADD COLUMN allow_phone INTEGER DEFAULT 1")
-    if 'allow_vehicle' not in columns:
-        cursor.execute("ALTER TABLE keys ADD COLUMN allow_vehicle INTEGER DEFAULT 1")
-    if 'allow_aadhaar' not in columns:
-        cursor.execute("ALTER TABLE keys ADD COLUMN allow_aadhaar INTEGER DEFAULT 1")
-    
-    conn.commit()
-    conn.close()
+    MONGO_URI = os.getenv("MONGO_URI")
+    if not MONGO_URI:
+        raise ValueError("MONGO_URI environment variable is not set.")
 
-def seed_keys_from_env():
     try:
-        items = json.loads(API_KEYS_JSON)
-        if not isinstance(items, list):
-            return
-    except Exception:
-        return
+        # Use the "knox" appName from your connection string
+        DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knox")
+        
+        # The database name is part of the connection string or you can specify it
+        # Let's use 'osint_db' as the database name
+        db = DB_CLIENT.osint_db 
+        KEYS_COLLECTION = db.keys # Use a collection named 'keys'
+        
+        # Create a unique index on the 'pin' field to prevent duplicates
+        KEYS_COLLECTION.create_index("pin", unique=True)
+        
+        print("Successfully connected to MongoDB.")
+        return KEYS_COLLECTION
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {e}")
+        return None
 
-    conn = get_db_connection()
-    for entry in items:
-        pin = entry.get("pin")
-        limit = entry.get("limit_count", entry.get("limit", 10))
-        expiry = entry.get("expiry")
-        if not pin:
-            continue
-        try:
-            conn.execute("INSERT OR IGNORE INTO keys (pin, limit_count, expiry) VALUES (?, ?, ?)", (pin, limit, expiry))
-        except Exception as e:
-            print("Failed to insert key from env:", pin, e)
-    conn.commit()
-    conn.close()
-
-initialize_database()
-seed_keys_from_env()
+# Initialize the connection on startup
+KEYS_COLLECTION = get_db_collection()
 
 # --- Main Routes ---
 @app.route('/')
@@ -119,6 +79,9 @@ def home():
 
 @app.route('/api/search', methods=['POST'])
 def search():
+    if KEYS_COLLECTION is None:
+        return jsonify({"error": "Database connection is not established."}), 500
+
     data = request.json or {}
     lookup_type = data.get('type')
     number = data.get('number')
@@ -128,108 +91,80 @@ def search():
     if not all([lookup_type, number, pin, device_id]):
         return jsonify({"error": "Missing required fields."}), 400
 
-    conn = get_db_connection()
-    key = conn.execute("SELECT * FROM keys WHERE pin = ?", (pin,)).fetchone()
+    # Find the key by its 'pin'
+    key = KEYS_COLLECTION.find_one({"pin": pin})
 
     if not key:
-        conn.close()
         return jsonify({"error": "Invalid API Key"}), 401
 
-    if key['expiry']:
+    if key.get('expiry'):
         expiry_date = datetime.datetime.fromisoformat(key['expiry']).date()
         if datetime.date.today() > expiry_date:
-            conn.close()
             return jsonify({"error": "API Key has expired."}), 403
 
-    if key['used_today'] >= key['limit_count']:
-        conn.close()
+    if key.get('used_today', 0) >= key.get('limit_count', 10):
         return jsonify({"error": "Daily search limit reached for this key."}), 403
 
-    # --- DEVICE LOCK FIX: This logic is now robust ---
-    if not key['device_id']:
-        # First time use, try to lock this key to this device
-        try:
-            conn.execute("UPDATE keys SET device_id = ? WHERE pin = ? AND device_id IS NULL", (device_id, pin))
-            conn.commit()
-            # After committing, we must reload the key to be sure we won the race
-            key = conn.execute("SELECT * FROM keys WHERE pin = ?", (pin,)).fetchone()
-        except sqlite3.IntegrityError:
-             # This can happen in a race, reload the key to check
-             key = conn.execute("SELECT * FROM keys WHERE pin = ?", (pin,)).fetchone()
+    if not key.get('device_id'):
+        # First time use, lock the device
+        KEYS_COLLECTION.update_one(
+            {"pin": pin, "device_id": None}, # Atomic check
+            {"$set": {"device_id": device_id}}
+        )
+        # Re-fetch the key to get the update
+        key = KEYS_COLLECTION.find_one({"pin": pin})
 
-    # Now we do the check with the (potentially) updated key
-    if key['device_id'] != device_id:
-        conn.close()
+    if key.get('device_id') != device_id:
         return jsonify({"error": "API Key is locked to another device."}), 403
-    # --- END OF FIX ---
 
     # --- Permission Check ---
-    if lookup_type == "phone" and not key['allow_phone']:
-        conn.close()
+    if lookup_type == "phone" and not key.get('allow_phone'):
         return jsonify({"error": "This key does not have permission for Phone searches."}), 403
-    if lookup_type == "vehicle" and not key['allow_vehicle']:
-        conn.close()
+    if lookup_type == "vehicle" and not key.get('allow_vehicle'):
         return jsonify({"error": "This key does not have permission for Vehicle searches."}), 403
-    if lookup_type == "aadhaar" and not key['allow_aadhaar']:
-        conn.close()
+    if lookup_type == "aadhaar" and not key.get('allow_aadhaar'):
         return jsonify({"error": "This key does not have permission for Aadhaar searches."}), 403
 
+    # (API calling logic is unchanged)
     api_url = ""
     if lookup_type == "phone":
         if not NUMBER_API:
-            conn.close()
             return jsonify({"error": "Number API not configured."}), 500
         api_url = NUMBER_API.format(number)
     elif lookup_type == "vehicle":
         if not VEHICLE_API:
-            conn.close()
             return jsonify({"error": "Vehicle API not configured."}), 500
         api_url = VEHICLE_API.format(number)
     elif lookup_type == "aadhaar":
         if not AADHAAR_API:
-            conn.close()
             return jsonify({"error": "Aadhaar API not configured."}), 500
         api_url = AADHAAR_API.format(number)
     else:
-        conn.close()
         return jsonify({"error": "Invalid lookup type"}), 400
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-    }
-
-    # --- MODIFICATION: Improved error handling ---
-    response = None # Define response outside try to access it in except
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
+    
     try:
         response = requests.get(api_url, timeout=15, headers=headers)
-        response.raise_for_status() # Check for HTTP errors (4xx or 5xx)
-        api_data = response.json() # Try to parse as JSON
-
+        response.raise_for_status() 
+        api_data = response.json() 
     except JSONDecodeError as json_err:
-        conn.close()
-        # This is the new error block! It runs when the response is not valid JSON.
-        response_text = response.text if response else "No response from server."
-        if not response_text:
-            response_text = "API returned an EMPTY response."
-        
-        error_message = f"API did not return valid JSON. Detail: {str(json_err)}. API Response: {response_text[:200]}..." # Show first 200 chars
+        response_text = response.text if response else "No response."
+        error_message = f"API did not return valid JSON. Response: {response_text[:200]}..." 
         return jsonify({"error": error_message}), 502
-        
     except Exception as e:
-        conn.close()
-        # This catches other errors (timeouts, connection refused, etc.)
-        error_message = f"Failed to fetch data from external API. Detail: {str(e)}"
-        return jsonify({"error": error_message}), 502
-    # --- END OF MODIFICATION ---
-
-    conn.execute("UPDATE keys SET used_today = used_today + 1 WHERE pin = ?", (pin,))
-    conn.commit()
+        return jsonify({"error": f"Failed to fetch data from external API. Detail: {str(e)}"}), 502
+    
+    # Atomically increment the 'used_today' field
+    KEYS_COLLECTION.update_one(
+        {"pin": pin},
+        {"$inc": {"used_today": 1}}
+    )
 
     key_info = {
-        "searches_left": key['limit_count'] - key['used_today'] - 1,
-        "expiry_date": key['expiry'] or "Never"
+        "searches_left": key.get('limit_count', 10) - key.get('used_today', 0) - 1,
+        "expiry_date": key.get('expiry') or "Never"
     }
-    conn.close()
 
     final_response = {
         **(api_data if isinstance(api_data, dict) else {"result": api_data}),
@@ -239,16 +174,14 @@ def search():
     }
     return jsonify(final_response)
 
-# --- Admin routes ---
+# --- Admin routes (Rewritten for MongoDB) ---
 if ENABLE_ADMIN_PANEL:
     def admin_required(f):
         from functools import wraps
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not session.get('is_admin'):
-                if request.is_json:
-                    return jsonify({"success": False, "error": "Unauthorized"}), 401
-                return redirect(url_for('admin_page'))
+                return jsonify({"success": False, "error": "Unauthorized"}), 401
             return f(*args, **kwargs)
         return decorated_function
 
@@ -258,6 +191,9 @@ if ENABLE_ADMIN_PANEL:
 
     @app.route('/admin/login', methods=['POST'])
     def admin_login():
+        if KEYS_COLLECTION is None:
+            return jsonify({"success": False, "error": "Database not configured."}), 500
+
         data = request.get_json(silent=True) or {}
         username = data.get('username')
         password = data.get('password')
@@ -267,77 +203,100 @@ if ENABLE_ADMIN_PANEL:
             
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['is_admin'] = True
-            conn = get_db_connection()
-            keys_rows = conn.execute("SELECT * FROM keys ORDER BY created_at DESC").fetchall()
-            conn.close()
-            keys_list = [dict(row) for row in keys_rows]
+            
+            # Find all keys and sort by creation time
+            keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
+            
+            # Convert MongoDB's _id to a string and use 'pin' as 'id' for the frontend
+            keys_list = []
+            for row in keys_rows:
+                row['_id'] = str(row['_id']) # Convert ObjectId to string
+                row['id'] = row['pin'] # Use 'pin' as the ID for admin panel actions
+            
             return jsonify({"success": True, "keys": keys_list})
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
     @app.route('/admin/keys', methods=['GET'])
     @admin_required
     def admin_get_keys():
-        conn = get_db_connection()
-        keys_rows = conn.execute("SELECT * FROM keys ORDER BY created_at DESC").fetchall()
-        conn.close()
-        keys_list = [dict(row) for row in keys_rows]
+        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
+        
+        keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
+        keys_list = []
+        for row in keys_rows:
+            row['_id'] = str(row['_id'])
+            row['id'] = row['pin'] # Use 'pin' as 'id'
+        
         return jsonify({"success": True, "keys": keys_list})
 
     @app.route('/admin/add', methods=['POST'])
     @admin_required
     def add_key():
+        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
+
         data = request.json or {}
         pin = data.get('pin')
         limit = data.get('limit', 10)
         expiry = data.get('expiry')
-        
-        # --- NEW: Logic for Key Type ---
         key_type = data.get('key_type', 'universal')
         
-        allow_phone = 1 if key_type in ['universal', 'phone'] else 0
-        allow_vehicle = 1 if key_type in ['universal', 'vehicle'] else 0
-        allow_aadhaar = 1 if key_type in ['universal', 'aadhaar'] else 0
-        # --- END OF NEW LOGIC ---
-
         if not pin:
             return jsonify({"success": False, "error": "PIN cannot be empty."}), 400
+
+        key_doc = {
+            "pin": pin,
+            "limit_count": limit,
+            "expiry": expiry,
+            "allow_phone": 1 if key_type in ['universal', 'phone'] else 0,
+            "allow_vehicle": 1 if key_type in ['universal', 'vehicle'] else 0,
+            "allow_aadhaar": 1 if key_type in ['universal', 'aadhaar'] else 0,
+            "used_today": 0,
+            "device_id": None,
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
+        }
+        
         try:
-            conn = get_db_connection()
-            conn.execute(
-                "INSERT INTO keys (pin, limit_count, expiry, allow_phone, allow_vehicle, allow_aadhaar) VALUES (?, ?, ?, ?, ?, ?)",
-                (pin, limit, expiry, allow_phone, allow_vehicle, allow_aadhaar)
-            )
-            conn.commit()
-            conn.close()
+            KEYS_COLLECTION.insert_one(key_doc)
             return jsonify({"success": True})
-        except sqlite3.IntegrityError:
+        except DuplicateKeyError:
             return jsonify({"success": False, "error": "This PIN already exists."}), 409
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/delete', methods=['POST'])
     @admin_required
     def delete_key():
-        data = request.json or {}
-        key_id = data.get('id')
-        if not key_id:
-            return jsonify({"success": False, "error": "Key ID is required."}), 400
-        conn = get_db_connection()
-        conn.execute("DELETE FROM keys WHERE id = ?", (key_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
+        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
+        
+        # The 'id' we receive from the frontend is the 'pin'
+        key_pin = (request.json or {}).get('id') 
+        if not key_pin:
+            return jsonify({"success": False, "error": "Key PIN is required."}), 400
+        
+        try:
+            result = KEYS_COLLECTION.delete_one({"pin": key_pin})
+            if result.deleted_count == 0:
+                return jsonify({"success": False, "error": "Key not found."}), 404
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
     
     @app.route('/admin/reset_device', methods=['POST'])
     @admin_required
     def reset_device():
-        data = request.json or {}
-        key_id = data.get('id')
-        if not key_id:
-            return jsonify({"success": False, "error": "Key ID is required."}), 400
+        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
+
+        key_pin = (request.json or {}).get('id')
+        if not key_pin:
+            return jsonify({"success": False, "error": "Key PIN is required."}), 400
+        
         try:
-            conn = get_db_connection()
-            conn.execute("UPDATE keys SET device_id = NULL WHERE id = ?", (key_id,))
-            conn.commit()
-            conn.close()
+            result = KEYS_COLLECTION.update_one(
+                {"pin": key_pin},
+                {"$set": {"device_id": None}}
+            )
+            if result.matched_count == 0:
+                return jsonify({"success": False, "error": "Key not found."}), 404
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
@@ -349,5 +308,8 @@ if ENABLE_ADMIN_PANEL:
 
 # --- Run ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
-    
+    port = int(os.getenv("PORT", 5000))
+    if not os.getenv("MONGO_URI"):
+        print("Warning: MONGO_URI not set. App will not connect to DB.")
+    # Set debug=False for production
+    app.run(host='0.0.0.0', port=port, debug=False)
