@@ -8,7 +8,8 @@ from pymongo.errors import DuplicateKeyError
 from requests.exceptions import JSONDecodeError
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
-from bs4 import BeautifulSoup  # --- NEW IMPORT ---
+from bs4 import BeautifulSoup
+from user_agent import generate_user_agent  # --- NEW IMPORT ---
 
 # --- Initialization ---
 load_dotenv()
@@ -52,13 +53,10 @@ def get_db_collection():
         raise ValueError("MONGO_URI environment variable is not set.")
 
     try:
-        # Use the "knox" appName from your connection string
         DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knox")
         db = DB_CLIENT.osint_db 
         KEYS_COLLECTION = db.keys 
-        
         KEYS_COLLECTION.create_index("pin", unique=True)
-        
         print("Successfully connected to MongoDB.")
         return KEYS_COLLECTION
     except Exception as e:
@@ -69,69 +67,53 @@ KEYS_COLLECTION = get_db_collection()
 
 
 # ----------------------------------------------------------------- #
-# --- NEW FUNCTION: Scraper logic from vehicleInfo.py ---
+# --- NEW FUNCTION: Replaced with your upgraded scraper code ---
 # ----------------------------------------------------------------- #
 def get_details_from_vahanx(rc_number: str) -> dict:
     """
     Fetches vehicle details by scraping vahanx.in.
-    This code is from your vehicleInfo.py file.
+    This code is your new, upgraded scraper.
     """
     print(f"[Info] Querying vahanx.in scraper for {rc_number}...")
-    rc = rc_number.strip().upper()
-    url = f"https://vahanx.in/rc-search/{rc}"
-
-    headers = {
-        "Host": "vahanx.in",
-        "Connection": "keep-alive",
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Referer": "https://vahanx.in/rc-search",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "en-US,en;q=0.9"
-    }
-
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        ua = generate_user_agent()
+        headers = {"User-Agent": ua}
+        url = f"https://vahanx.in/rc-search/{rc_number.strip().upper()}"
+
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
+
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        data_labels = [
+            "Owner Name", "Father's Name", "Owner Serial No", "Model Name", "Maker Model",
+            "Vehicle Class", "Fuel Type", "Fuel Norms", "Registration Date",
+            "Insurance Company", "Insurance No", "Insurance Expiry", "Insurance Upto",
+            "Fitness Upto", "Tax Upto", "PUC No", "PUC Upto",
+            "Financier Name", "Registered RTO", "Address", "City Name", "Phone"
+        ]
+
+        # Initialize data dictionary with None
+        data = {label: None for label in data_labels}
+
+        for label in data:
+            div = soup.find("span", string=label)
+            if div:
+                parent = div.find_parent("div")
+                if parent:
+                    value_tag = parent.find("p")
+                    if value_tag:
+                        data[label] = value_tag.get_text(strip=True)
+
+        # Return the data dictionary instead of printing it
+        return data
+
     except requests.exceptions.RequestException as e:
+        print(f"Vahanx scraper network error: {e}")
         return {"error": f"Vahanx scraper network error: {e}"}
     except Exception as e:
+        print(f"Vahanx scraper failed: {e}")
         return {"error": f"Vahanx scraper failed: {e}"}
-
-    def get_value(label):
-        try:
-            div = soup.find("span", string=label).find_parent("div")
-            return div.find("p").get_text(strip=True)
-        except AttributeError:
-            return None
-
-    data = {
-        "Owner Name": get_value("Owner Name"),
-        "Father's Name": get_value("Father's Name"),
-        "Owner Serial No": get_value("Owner Serial No"),
-        "Model Name": get_value("Model Name"),
-        "Maker Model": get_value("Maker Model"),
-        "Vehicle Class": get_value("Vehicle Class"),
-        "Fuel Type": get_value("Fuel Type"),
-        "Fuel Norms": get_value("Fuel Norms"),
-        "Registration Date": get_value("Registration Date"),
-        "Insurance Company": get_value("Insurance Company"),
-        "Insurance No": get_value("Insurance No"),
-        "Insurance Expiry": get_value("Insurance Expiry"),
-        "Insurance Upto": get_value("Insurance Upto"),
-        "Fitness Upto": get_value("Fitness Upto"),
-        "Tax Upto": get_value("Tax Upto"),
-        "PUC No": get_value("PUC No"),
-        "PUC Upto": get_value("PUC Upto"),
-        "Financier Name": get_value("Financier Name"),
-        "Registered RTO": get_value("Registered RTO"),
-        "Address": get_value("Address"),
-        "City Name": get_value("City Name"),
-        "Phone": get_value("Phone")
-    }
-    # Filter out None values for a cleaner response
-    return {k: v for k, v in data.items() if v is not None}
 
 
 # --- Main Routes ---
@@ -183,12 +165,8 @@ def search():
     if lookup_type == "aadhaar" and not key.get('allow_aadhaar'):
         return jsonify({"error": "This key does not have permission for Aadhaar searches."}), 403
 
-    # This header is used by both API and scraper
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
     
-    # ----------------------------------------------------------------- #
-    # --- MODIFIED SECTION: This block is updated to handle all types ---
-    # ----------------------------------------------------------------- #
     api_data = {}
     response_text_for_error = ""
 
@@ -212,13 +190,10 @@ def search():
             response = requests.get(api_url, timeout=15, headers=headers)
             response.raise_for_status()
             response_text_for_error = response.text
-            # Store result in a nested dictionary
             api_data["byekam_source"] = response.json()
 
             # --- 2. Call Vahanx Scraper (New Logic) ---
-            # We call this *after* the first API
             vahanx_data = get_details_from_vahanx(number)
-            # Store result in another nested dictionary
             api_data["vahanx_source"] = vahanx_data
 
         elif lookup_type == "aadhaar":
@@ -237,10 +212,8 @@ def search():
         error_message = f"API did not return valid JSON. Response: {response_text_for_error[:200]}..." 
         return jsonify({"error": error_message}), 502
     except Exception as e:
-        # This will catch failures from requests OR the vahanx scraper
         return jsonify({"error": f"Failed to fetch data from external API/scraper. Detail: {str(e)}"}), 502
     
-    # --- This part remains the same ---
     KEYS_COLLECTION.update_one(
         {"pin": pin},
         {"$inc": {"used_today": 1}}
@@ -291,12 +264,11 @@ if ENABLE_ADMIN_PANEL:
             
             keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
             
-            # ** THIS IS THE FIX **
             keys_list = []
             for row in keys_rows:
                 row['_id'] = str(row['_id']) 
                 row['id'] = row['pin'] 
-                keys_list.append(row) # <-- THIS LINE WAS MISSING
+                keys_list.append(row)
             
             return jsonify({"success": True, "keys": keys_list})
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
@@ -307,13 +279,12 @@ if ENABLE_ADMIN_PANEL:
         if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
         
         keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
-
-        # ** THIS IS THE FIX **
+        
         keys_list = []
         for row in keys_rows:
             row['_id'] = str(row['_id'])
             row['id'] = row['pin'] 
-            keys_list.append(row) # <-- THIS LINE WAS MISSING
+            keys_list.append(row)
         
         return jsonify({"success": True, "keys": keys_list})
 
@@ -399,3 +370,4 @@ if __name__ == '__main__':
     if not os.getenv("MONGO_URI"):
         print("Warning: MONGO_URI not set. App will not connect to DB.")
     app.run(host='0.0.0.0', port=port, debug=False)
+    
