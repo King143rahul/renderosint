@@ -3,8 +3,8 @@ import os
 import datetime
 import json
 import requests
-import pymongo # <-- NEW: Import pymongo
-from pymongo.errors import DuplicateKeyError # <-- NEW
+import pymongo
+from pymongo.errors import DuplicateKeyError
 from requests.exceptions import JSONDecodeError
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from dotenv import load_dotenv
@@ -43,7 +43,6 @@ def get_db_collection():
     """Establishes a connection to MongoDB and returns the 'keys' collection."""
     global DB_CLIENT, KEYS_COLLECTION
     
-    # Check if we already have a connection
     if KEYS_COLLECTION is not None:
         return KEYS_COLLECTION
 
@@ -54,13 +53,9 @@ def get_db_collection():
     try:
         # Use the "knox" appName from your connection string
         DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knox")
-        
-        # The database name is part of the connection string or you can specify it
-        # Let's use 'osint_db' as the database name
         db = DB_CLIENT.osint_db 
-        KEYS_COLLECTION = db.keys # Use a collection named 'keys'
+        KEYS_COLLECTION = db.keys 
         
-        # Create a unique index on the 'pin' field to prevent duplicates
         KEYS_COLLECTION.create_index("pin", unique=True)
         
         print("Successfully connected to MongoDB.")
@@ -69,7 +64,6 @@ def get_db_collection():
         print(f"Error connecting to MongoDB: {e}")
         return None
 
-# Initialize the connection on startup
 KEYS_COLLECTION = get_db_collection()
 
 # --- Main Routes ---
@@ -91,7 +85,6 @@ def search():
     if not all([lookup_type, number, pin, device_id]):
         return jsonify({"error": "Missing required fields."}), 400
 
-    # Find the key by its 'pin'
     key = KEYS_COLLECTION.find_one({"pin": pin})
 
     if not key:
@@ -106,18 +99,15 @@ def search():
         return jsonify({"error": "Daily search limit reached for this key."}), 403
 
     if not key.get('device_id'):
-        # First time use, lock the device
         KEYS_COLLECTION.update_one(
-            {"pin": pin, "device_id": None}, # Atomic check
+            {"pin": pin, "device_id": None},
             {"$set": {"device_id": device_id}}
         )
-        # Re-fetch the key to get the update
         key = KEYS_COLLECTION.find_one({"pin": pin})
 
     if key.get('device_id') != device_id:
         return jsonify({"error": "API Key is locked to another device."}), 403
 
-    # --- Permission Check ---
     if lookup_type == "phone" and not key.get('allow_phone'):
         return jsonify({"error": "This key does not have permission for Phone searches."}), 403
     if lookup_type == "vehicle" and not key.get('allow_vehicle'):
@@ -125,7 +115,6 @@ def search():
     if lookup_type == "aadhaar" and not key.get('allow_aadhaar'):
         return jsonify({"error": "This key does not have permission for Aadhaar searches."}), 403
 
-    # (API calling logic is unchanged)
     api_url = ""
     if lookup_type == "phone":
         if not NUMBER_API:
@@ -155,7 +144,6 @@ def search():
     except Exception as e:
         return jsonify({"error": f"Failed to fetch data from external API. Detail: {str(e)}"}), 502
     
-    # Atomically increment the 'used_today' field
     KEYS_COLLECTION.update_one(
         {"pin": pin},
         {"$inc": {"used_today": 1}}
@@ -204,14 +192,14 @@ if ENABLE_ADMIN_PANEL:
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['is_admin'] = True
             
-            # Find all keys and sort by creation time
             keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
             
-            # Convert MongoDB's _id to a string and use 'pin' as 'id' for the frontend
+            # ** THIS IS THE FIX **
             keys_list = []
             for row in keys_rows:
-                row['_id'] = str(row['_id']) # Convert ObjectId to string
-                row['id'] = row['pin'] # Use 'pin' as the ID for admin panel actions
+                row['_id'] = str(row['_id']) 
+                row['id'] = row['pin'] 
+                keys_list.append(row) # <-- THIS LINE WAS MISSING
             
             return jsonify({"success": True, "keys": keys_list})
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
@@ -222,10 +210,13 @@ if ENABLE_ADMIN_PANEL:
         if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
         
         keys_rows = list(KEYS_COLLECTION.find().sort("created_at", pymongo.DESCENDING))
+
+        # ** THIS IS THE FIX **
         keys_list = []
         for row in keys_rows:
             row['_id'] = str(row['_id'])
-            row['id'] = row['pin'] # Use 'pin' as 'id'
+            row['id'] = row['pin'] 
+            keys_list.append(row) # <-- THIS LINE WAS MISSING
         
         return jsonify({"success": True, "keys": keys_list})
 
@@ -268,7 +259,6 @@ if ENABLE_ADMIN_PANEL:
     def delete_key():
         if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
         
-        # The 'id' we receive from the frontend is the 'pin'
         key_pin = (request.json or {}).get('id') 
         if not key_pin:
             return jsonify({"success": False, "error": "Key PIN is required."}), 400
@@ -311,5 +301,4 @@ if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
     if not os.getenv("MONGO_URI"):
         print("Warning: MONGO_URI not set. App will not connect to DB.")
-    # Set debug=False for production
     app.run(host='0.0.0.0', port=port, debug=False)
