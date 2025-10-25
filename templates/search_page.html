@@ -82,7 +82,6 @@
             return deviceId;
         }
 
-        // --- NEW: Fetch and display global note ---
         async function fetchGlobalNote() {
             try {
                 const response = await fetch('/api/config');
@@ -106,7 +105,6 @@
             const deviceId = getDeviceId(); 
 
             if (SERVICE_TYPE === 'phone' && (number === '9471785783' || number === '7483420178')) {
-                // This is the easter egg from the old code
                 alert("CHAL BKL GHAR JAAAAA........");
                 return;
             }
@@ -146,11 +144,23 @@
             numberInput.focus();
         }
 
+        // --- UPDATED FUNCTION ---
         function renderObject(data) {
             let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
-            // --- UPDATED: Added 'developer' and 'support' to junk keys ---
-            const junkKeys = ['dev', 'status', 'code', 'phone', 'error', 'message', 'success', 'developer', 'support', 'id'];
             
+            // 1. List of junk keys (added a few more)
+            const junkKeys = [
+                'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
+                'developer', 'support', 'id', 'credit', 'author', 'result'
+            ];
+            
+            // 2. --- NEW: List of junk values to filter out ---
+            const junkValues = [
+                '@oxmzoo', 
+                '@HazexAPI on Telegram', 
+                '@MrHazex'
+            ];
+
             const prettyKey = (key) => {
                  const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
                 return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
@@ -162,9 +172,14 @@
 
             for (const key of sortedKeys) {
                 const value = data[key];
-                
-                if (junkKeys.includes(key.toLowerCase()) || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
-                    continue;
+
+                // 3. --- NEW: Check for junk values ---
+                let valueString = String(value).toLowerCase();
+                let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
+
+                // 4. --- UPDATED: Combined if condition ---
+                if (junkKeys.includes(key.toLowerCase()) || isJunkValue || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
+                    continue; // Skip this key-value pair
                 }
                 
                 const label = prettyKey(key);
@@ -186,6 +201,7 @@
             html += '</div>';
             return html;
         }
+        // --- END OF UPDATED FUNCTION ---
 
         function displayResults(result) {
             resultContainer.innerHTML = '';
@@ -231,7 +247,12 @@
                         htmlContent += renderObject(item);
                         plainTextContent += `\n--- ${title} ---\n`;
                         Object.entries(item).forEach(([k, v]) => {
-                            if (v !== null && v !== 'NA' && v !== '') plainTextContent += `${k.replace(/_/g, ' ')}: ${v}\n`;
+                            // Also check for junk values when building plain text
+                            let vString = String(v).toLowerCase();
+                            let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                            if (v !== null && v !== 'NA' && v !== '' && !isJunk) {
+                                plainTextContent += `${prettyKey(k)}: ${v}\n`;
+                            }
                         });
                     }
                     htmlContent += `</div></div>`;
@@ -304,9 +325,8 @@
             }
         }
         
-        // --- Load initial data ---
         loadSavedPin();
-        fetchGlobalNote(); // --- NEW: Call this on page load ---
+        fetchGlobalNote();
     </script>
 </body>
 </html>
