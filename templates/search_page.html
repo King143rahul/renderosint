@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - OSINT by KNOX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+        .glass-card {
+            background: rgba(22, 27, 34, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(48, 54, 61, 0.5);
+        }
+        .loader {
+            border: 4px solid #30363d;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-key {
+            color: #8b949e;
+            width: 140px; 
+            display: inline-block;
+            font-weight: 500;
+            text-transform: capitalize; 
+            vertical-align: top;
+            flex-shrink: 0;
+        }
+        .result-value {
+            display: inline-block;
+            width: calc(100% - 145px);
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            flex-grow: 1;
+        }
+        .result-pair {
+            display: flex;
+            flex-wrap: nowrap;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-200 tracking-wider">
+                <i class="{{ icon_class }} mr-3"></i>{{ title }}
+            </h1>
+            <a href="/" class="text-sm text-blue-400 hover:text-blue-300 transition-all">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Services
+            </a>
+        </header>
+
+        <main class="glass-card rounded-xl shadow-2xl p-6 md:p-8">
+            <div class="space-y-4">
+                <input id="numberInput" type="text" placeholder="{{ placeholder }}" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                
+                <input id="pinInput" type="password" placeholder="Enter Your API Key" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                
+                <div class="flex justify-between items-center -mt-2 mb-2">
+                    <div class="flex items-center">
+                        <input id="savePinCheck" type="checkbox" class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2 rounded">
+                        <label for="savePinCheck" class="ml-2 text-sm font-medium text-gray-400">Save Key</label>
+                    </div>
+                    <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="text-sm text-green-400 hover:text-green-300 transition-all">
+                        <i class="fab fa-whatsapp mr-1"></i>Get API Key
+                    </a>
+                </div>
+
+                <button id="searchBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i>Search
+                </button>
+            </div>
+
+            <div id="resultContainer" class="mt-8 min-h-[100px]"></div>
+        </main>
+        
+        <footer class="text-center mt-8">
+            <p class="text-gray-500 text-sm">Developer: RAHUL SHARMA</p>
+        </footer>
+    </div>
+
+    <script>
+        const SERVICE_TYPE = '{{ service_type }}';
+    </script>
+    <script>
+        // All JavaScript logic is now inline here
+        const numberInput = document.getElementById('numberInput');
+        const pinInput = document.getElementById('pinInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const savePinCheck = document.getElementById('savePinCheck');
+
+        searchBtn.addEventListener('click', performSearch);
+        numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('osintDeviceId');
+            if (!deviceId) {
+                deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem('osintDeviceId', deviceId);
+            }
+            return deviceId;
+        }
+
+        function playFullscreenVideo(videoId) {
+            const overlay = document.createElement('div');
+            overlay.className = 'video-overlay';
+            overlay.style = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.95); z-index: 9998; display: flex; align-items: center; justify-content: center;';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'video-close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.style = 'position: fixed; top: 20px; right: 20px; font-size: 2rem; color: white; background: #333; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; z-index: 9999; line-height: 40px; text-align: center;';
+            closeBtn.onclick = () => {
+                document.body.removeChild(overlay);
+                alert("CHAL BKL GHAR JAAAAA........");
+            };
+            
+            const iframe = document.createElement('iframe');
+            iframe.className = 'video-iframe';
+            iframe.style = 'width: 100%; height: 100%; border: none;';
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&loop=1&playlist=${videoId}&fs=1`;
+            iframe.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture';
+            
+            overlay.appendChild(iframe);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+        }
+
+        async function performSearch() {
+            const number = numberInput.value.trim();
+            const pin = pinInput.value.trim();
+            const deviceId = getDeviceId(); 
+
+            if (SERVICE_TYPE === 'phone' && (number === '9471785783' || number === '7483420178')) {
+                playFullscreenVideo('DTcMLKH0KtY');
+                return;
+            }
+
+            if (!number || !pin) {
+                displayError("Please enter both the number and your API key.");
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        type: SERVICE_TYPE, 
+                        number, 
+                        pin, 
+                        deviceId: deviceId 
+                    })
+                });
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+                
+                if (result.status === 'success' && savePinCheck.checked) {
+                    localStorage.setItem('osintApiKey', pin);
+                } else if (!savePinCheck.checked) {
+                    localStorage.removeItem('osintApiKey');
+                }
+                
+                displayResults(result);
+
+            } catch (error) {
+                displayError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function handleSearchAgain() {
+            resultContainer.innerHTML = '';
+            numberInput.value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            numberInput.focus();
+        }
+
+        // --- NEW: Helper function to render any object recursively ---
+        function renderObject(data) {
+            let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
+            const junkKeys = ['dev', 'status', 'code', 'phone', 'error', 'message', 'success'];
+            
+            const prettyKey = (key) => {
+                 const keyMap = {
+                    'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No',
+                    'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial',
+                    'maker_model': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel',
+                    'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'insurance_company': 'Insurance Co.',
+                    'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto',
+                    'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No',
+                    'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City',
+                    'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status'
+                };
+                return keyMap[key] || key.replace(/_/g, ' '); 
+            };
+            
+            // Prioritize specific keys
+            const allKeys = Object.keys(data);
+            const priorityKeys = [
+                'name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 
+                'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'
+            ];
+            
+            const sortedKeys = [
+                ...priorityKeys.filter(k => allKeys.includes(k)),
+                ...allKeys.filter(k => !priorityKeys.includes(k))
+            ];
+
+            for (const key of sortedKeys) {
+                const value = data[key];
+                
+                // --- MODIFIED: Hide junk keys, but show everything else ---
+                if (junkKeys.includes(key.toLowerCase()) || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
+                    continue;
+                }
+                
+                const label = prettyKey(key);
+                let valueHtml;
+
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    // Recurse for nested objects
+                    valueHtml = renderObject(value);
+                } else if (Array.isArray(value)) {
+                    // Handle arrays
+                    valueHtml = `<div class="pl-4">${value.map(item => 
+                        typeof item === 'object' ? renderObject(item) : `<span class="block">${item}</span>`
+                    ).join('')}</div>`;
+                } else {
+                    // Handle simple values
+                    let displayValue = (value || '').toString().replace(/!/g, ', ');
+                    let valueClass = (priorityKeys.includes(key)) ? 'text-cyan-400 font-bold' : '';
+                    valueHtml = `<span class="result-value ${valueClass}">${displayValue}</span>`;
+                }
+                
+                html += `<div class="result-pair"><span class="result-key">${label}</span>: ${valueHtml}</div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+
+        function displayResults(result) {
+            resultContainer.innerHTML = '';
+            
+            if (result.status !== 'success') {
+                 displayError(result.error || 'Failed to retrieve data.');
+                 return;
+            }
+
+            // --- NEW DISPLAY LOGIC ---
+            // This logic no longer looks for 'byekam_source' etc.
+            // It iterates over all keys in the result *except* the status/dev keys.
+            // This means it will automatically display 'result_1', 'result_2', etc.
+            // or the flat data if it's a single-API response.
+
+            const allKeys = Object.keys(result);
+            const dataKeys = allKeys.filter(k => !['status', 'key_status', 'dev'].includes(k));
+
+            if (dataKeys.length === 0) {
+                 displayError('No data found for this query.');
+                 return;
+            }
+
+            let htmlContent = '';
+            let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
+            
+            const resultId = 'result-text-0'; // We'll just use one copy button for all results
+
+            // Check if the result is a single-API response (like aadhaar)
+            const isFlatResponse = dataKeys.every(k => typeof result[k] !== 'object');
+
+            if (isFlatResponse) {
+                htmlContent += `
+                    <div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">
+                        <div class="p-4 space-y-2 text-sm text-gray-200">
+                `;
+                htmlContent += renderObject(result); // Render the flat object
+                plainTextContent += JSON.stringify(result, null, 2); // Simple text for flat
+                htmlContent += `</div></div>`;
+            } else {
+                // Handle multi-API responses (like phone, vehicle)
+                dataKeys.forEach((key, index) => {
+                    const item = result[key];
+                    if (typeof item !== 'object' || item === null) return;
+                    
+                    const title = item.error ? `Source ${index + 1} (Error)` : `Source ${index + 1}`;
+                    const titleColor = item.error ? 'text-red-400' : 'text-cyan-400';
+
+                    htmlContent += `
+                        <div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">
+                            <div class="p-3 border-b border-gray-700">
+                                <span class="${titleColor} font-semibold">${title}</span>
+                            </div>
+                            <div class="p-4 space-y-2 text-sm text-gray-200">
+                    `;
+                    
+                    if (item.error) {
+                        htmlContent += `<div class="text-red-300">${item.error}</div>`;
+                        plainTextContent += `\n--- ${title} ---\nError: ${item.error}\n`;
+                    } else {
+                        htmlContent += renderObject(item);
+                        // Simple text generation for copy-paste
+                        plainTextContent += `\n--- ${title} ---\n`;
+                        for(const [k, v] of Object.entries(item)) {
+                            if (v !== null && v !== 'NA' && v !== '') {
+                                plainTextContent += `${k.replace(/_/g, ' ')}: ${v}\n`;
+                            }
+                        }
+                    }
+                    htmlContent += `</div></div>`;
+                });
+            }
+
+            // --- END NEW DISPLAY LOGIC ---
+
+            if (result.key_status) {
+                htmlContent += `
+                    <div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2">
+                        <span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span>
+                        <span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span>
+                    </div>
+                `;
+            }
+            
+            htmlContent += `
+                <div class="mt-4">
+                    <button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}">
+                        <i class="fas fa-copy mr-2"></i>Copy All Results
+                    </button>
+                    <textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea>
+                </div>
+            `;
+            
+            htmlContent += `
+                <button id="searchAgainBtn" class="w-full p-3 mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i>Search Again
+                </button>
+            `;
+
+            resultContainer.innerHTML = htmlContent;
+
+            // Setup Copy Button
+            const copyBtn = document.getElementById('copy-all-btn');
+            copyBtn.addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const targetId = button.dataset.target;
+                const textToCopy = document.getElementById(targetId).value;
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                    button.classList.add('bg-green-700', 'text-white');
+                    setTimeout(() => {
+                        button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy All Results';
+                        button.classList.remove('bg-green-700', 'text-white');
+                    }, 2000);
+                }, (err) => {
+                    button.textContent = 'Failed';
+                    console.error('Failed to copy: ', err);
+                });
+            });
+            
+            document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
+        }
+
+        function displayError(msg) {
+            resultContainer.innerHTML = `
+                <div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>${msg}
+                </div>
+                <button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i>Search Again
+                </button>
+            `;
+            document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
+        }
+
+        function setLoading(loading) {
+            searchBtn.disabled = loading;
+            searchBtn.innerHTML = loading ? `<div class="loader !w-6 !h-6 !border-t-white"></div>` : `<i class="fas fa-search mr-2"></i>Search`;
+        }
+        
+        function loadSavedPin() {
+            const savedPin = localStorage.getItem('osintApiKey');
+            if (savedPin) {
+                pinInput.value = savedPin;
+                savePinCheck.checked = true;
+            }
+        }
+        
+        loadSavedPin();
+    </script>
+</body>
+</html>
