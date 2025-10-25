@@ -144,27 +144,26 @@
             numberInput.focus();
         }
 
-        // --- UPDATED FUNCTION ---
+        // --- FIXED: Moved helper lists to global scope ---
+        const junkKeys = [
+            'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
+            'developer', 'support', 'id', 'credit', 'author', 'result'
+        ];
+        
+        const junkValues = [
+            '@oxmzoo', 
+            '@HazexAPI on Telegram', 
+            '@MrHazex'
+        ];
+
+        const prettyKey = (key) => {
+             const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
+            return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
+        };
+        // --- END OF FIX ---
+
         function renderObject(data) {
             let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
-            
-            // 1. List of junk keys (added a few more)
-            const junkKeys = [
-                'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
-                'developer', 'support', 'id', 'credit', 'author', 'result'
-            ];
-            
-            // 2. --- NEW: List of junk values to filter out ---
-            const junkValues = [
-                '@oxmzoo', 
-                '@HazexAPI on Telegram', 
-                '@MrHazex'
-            ];
-
-            const prettyKey = (key) => {
-                 const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
-                return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
-            };
             
             const allKeys = Object.keys(data);
             const priorityKeys = ['name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'];
@@ -173,13 +172,11 @@
             for (const key of sortedKeys) {
                 const value = data[key];
 
-                // 3. --- NEW: Check for junk values ---
                 let valueString = String(value).toLowerCase();
                 let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
 
-                // 4. --- UPDATED: Combined if condition ---
                 if (junkKeys.includes(key.toLowerCase()) || isJunkValue || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
-                    continue; // Skip this key-value pair
+                    continue;
                 }
                 
                 const label = prettyKey(key);
@@ -201,8 +198,8 @@
             html += '</div>';
             return html;
         }
-        // --- END OF UPDATED FUNCTION ---
 
+        // --- UPDATED FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -220,14 +217,10 @@
             let htmlContent = '';
             let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
             const resultId = 'result-text-0';
-            const isFlatResponse = dataKeys.every(k => typeof result[k] !== 'object' || result[k] === null);
 
-            if (isFlatResponse) {
-                htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4"><div class="p-4 space-y-2 text-sm text-gray-200">`;
-                htmlContent += renderObject(result);
-                plainTextContent += JSON.stringify(result, null, 2);
-                htmlContent += `</div></div>`;
-            } else {
+            // --- FIXED: Use SERVICE_TYPE to determine logic ---
+            if (SERVICE_TYPE === 'phone' || SERVICE_TYPE === 'vehicle') {
+                // This is for multi-responses (Phone, Vehicle)
                 dataKeys.forEach((key, index) => {
                     const item = result[key];
                     if (typeof item !== 'object' || item === null) return;
@@ -247,7 +240,6 @@
                         htmlContent += renderObject(item);
                         plainTextContent += `\n--- ${title} ---\n`;
                         Object.entries(item).forEach(([k, v]) => {
-                            // Also check for junk values when building plain text
                             let vString = String(v).toLowerCase();
                             let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
                             if (v !== null && v !== 'NA' && v !== '' && !isJunk) {
@@ -257,7 +249,34 @@
                     }
                     htmlContent += `</div></div>`;
                 });
+            } else {
+                // This is for flat responses (Aadhaar, Family, Insta)
+                htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">`; // Card start
+                
+                if (result.error) {
+                    // Correctly display top-level errors for Insta/Aadhaar
+                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-red-400 font-semibold">Result (Error)</span></div>`;
+                    htmlContent += `<div class="p-4 text-red-300">${result.error}</div>`;
+                    plainTextContent += `--- Result (Error) ---\nError: ${result.error}\n`;
+                } else {
+                    // Display data if no error
+                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
+                    htmlContent += `<div class="p-4 space-y-2 text-sm text-gray-200">`;
+                    htmlContent += renderObject(result);
+                    
+                    plainTextContent += `--- Result ---\n`;
+                    Object.entries(result).forEach(([k, v]) => {
+                        let vString = String(v).toLowerCase();
+                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) {
+                            plainTextContent += `${prettyKey(k)}: ${v}\n`;
+                        }
+                    });
+                    htmlContent += `</div>`;
+                }
+                htmlContent += `</div>`; // Card end
             }
+            // --- END OF FIX ---
 
             if (result.key_status) {
                 htmlContent += `
