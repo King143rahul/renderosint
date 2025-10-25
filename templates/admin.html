@@ -12,20 +12,16 @@
         .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
         .modal-content { background-color:#161b22; }
         .hidden { display: none !important; }
-        /* Style for the select dropdown in the modal */
-        #new-key-type {
-            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%239ca3af%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%20clip-rule%3D%22evenodd%22%20%2F%3E%3C%2Fsvg%3E');
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            color: #c9d1d9;
+        .pin-link { cursor: pointer; }
+        .pin-link:hover { text-decoration: underline; color: #60a5fa; }
+        .modal {
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem; z-index: 50;
         }
-        #new-key-type option {
-            background-color: #0d1117;
-            color: #c9d1d9;
+        .modal-body {
+            max-height: 80vh;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -66,7 +62,7 @@
                             <th class="p-3 text-sm font-semibold">API Key (PIN)</th>
                             <th class="p-3 text-sm font-semibold">Usage (Today/Limit)</th>
                             <th class="p-3 text-sm font-semibold">Expires</th>
-                            <th class="p-3 text-sm font-semibold">Key Type</th>
+                            <th class="p-3 text-sm font-semibold">Permissions</th>
                             <th class="p-3 text-sm font-semibold">Device Lock</th>
                             <th class="p-3 text-sm font-semibold text-right">Actions</th>
                         </tr>
@@ -78,117 +74,175 @@
         </main>
     </div>
 
-    <div id="add-key-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div id="key-modal" class="modal hidden">
         <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
-            <h2 class="text-2xl font-bold">Add New API Key</h2>
-            <input id="new-pin" placeholder="Enter new PIN" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
-            <input id="new-limit" type="number" placeholder="Daily Search Limit (e.g., 10)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            <h2 id="modal-title" class="text-2xl font-bold">Add New API Key</h2>
+            <input type="hidden" id="modal-key-pin-hidden">
+            
             <div>
-                <label class="text-sm text-gray-400">Expiry Date (Optional)</label>
-                <input id="new-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg" min="">
+                <label class="text-sm text-gray-400">API Key (PIN)</label>
+                <input id="modal-key-pin" placeholder="Enter new PIN" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
             </div>
             
             <div>
-                <label for="new-key-type" class="text-sm text-gray-400">Key Type</label>
-                <select id="new-key-type" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
-                    <option value="universal" selected>Universal (All Tools)</option>
-                    <option value="phone">Phone Only</option>
-                    <option value="vehicle">Vehicle Only</option>
-                    <option value="aadhaar">Aadhaar Only</option>
-                </select>
+                <label class="text-sm text-gray-400">Daily Search Limit</label>
+                <input id="modal-key-limit" type="number" placeholder="Daily Search Limit (e.g., 10)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg">
+            </div>
+            
+            <div>
+                <label class="text-sm text-gray-400">Expiry Date (Optional)</label>
+                <input id="modal-key-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg" min="">
+            </div>
+            
+            <div>
+                <label class="text-sm text-gray-400">Permissions</label>
+                <div id="modal-key-permissions" class="grid grid-cols-2 gap-2 mt-2">
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="perm-check w-4 h-4 bg-gray-700 border-gray-600 text-blue-500"> <span>Phone</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="perm-check w-4 h-4 bg-gray-700 border-gray-600 text-blue-500"> <span>Vehicle</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="perm-check w-4 h-4 bg-gray-700 border-gray-600 text-blue-500"> <span>Aadhaar</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check w-4 h-4 bg-gray-700 border-gray-600 text-blue-500"> <span>Aadhaar Family</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="perm-check w-4 h-4 bg-gray-700 border-gray-600 text-blue-500"> <span>Instagram</span></label>
+                </div>
             </div>
             
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
             <div class="flex gap-4">
-                <button id="confirm-add-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
-                <button id="cancel-add-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+                <button id="modal-confirm-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
+                <button id="modal-cancel-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-3xl space-y-6">
+            <h2 id="history-modal-title" class="text-2xl font-bold">Search History</h2>
+            <div id="history-modal-body" class="modal-body">
+                <p class="text-center text-gray-400">Loading history...</p>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button id="history-modal-close-btn" class="p-3 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Close</button>
             </div>
         </div>
     </div>
 
+
     <script>
+        // Global state
+        let allKeysData = []; // Cache for key data
+        let currentModalMode = 'add'; // 'add' or 'edit'
+
+        // Views
         const loginView = document.getElementById('login-view');
         const dashboardView = document.getElementById('dashboard-view');
+        
+        // Login
         const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-
-        function setLoading(button, isLoading, originalText) {
-            if (isLoading) {
-                button.disabled = true;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            } else {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-        }
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginError = document.getElementById('login-error');
+        
+        // Dashboard
+        const logoutBtn = document.getElementById('logoutBtn');
+        const addKeyBtn = document.getElementById('add-key-btn');
         const keysTableBody = document.getElementById('keys-table-body');
 
-        // Modal Elements
-        const addKeyBtn = document.getElementById('add-key-btn');
-        const addKeyModal = document.getElementById('add-key-modal');
-        const confirmAddBtn = document.getElementById('confirm-add-btn');
-        const cancelAddBtn = document.getElementById('cancel-add-btn');
-        const newPinInput = document.getElementById('new-pin');
-        const newLimitInput = document.getElementById('new-limit');
-        const newExpiryInput = document.getElementById('new-expiry');
+        // Add/Edit Modal
+        const keyModal = document.getElementById('key-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalKeyPin = document.getElementById('modal-key-pin');
+        const modalKeyPinHidden = document.getElementById('modal-key-pin-hidden');
+        const modalKeyLimit = document.getElementById('modal-key-limit');
+        const modalKeyExpiry = document.getElementById('modal-key-expiry');
         const modalError = document.getElementById('modal-error');
-        const newKeyType = document.getElementById('new-key-type'); // New dropdown
+        const permCheckboxes = document.querySelectorAll('.perm-check');
+        
+        // History Modal
+        const historyModal = document.getElementById('history-modal');
+        const historyModalTitle = document.getElementById('history-modal-title');
+        const historyModalBody = document.getElementById('history-modal-body');
+        const historyModalCloseBtn = document.getElementById('history-modal-close-btn');
 
-        let isLoggedIn = false;
+        // --- Utility Functions ---
+        function setLoading(button, isLoading, originalText = null) {
+            if (!button) return;
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                button.disabled = false;
+                button.innerHTML = originalText || button.dataset.originalText || 'Submit';
+            }
+        }
+        
+        // Set min date for expiry input
+        const today = new Date().toISOString().split('T')[0];
+        modalKeyExpiry.setAttribute('min', today);
 
+        // --- View Management ---
         function showLogin() {
             loginView.classList.remove('hidden');
             dashboardView.classList.add('hidden');
         }
 
-        function showDashboard(keys) {
+        function showDashboard() {
             loginView.classList.add('hidden');
             dashboardView.classList.remove('hidden');
-            renderKeys(keys || []);
+            loadKeys(); // Load keys when showing dashboard
+        }
+
+        // --- API Call Functions ---
+        async function apiRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(window.location.origin + endpoint, options);
+                if (response.status === 401) {
+                    // Unauthorized, force logout
+                    showLogin();
+                    return { success: false, error: 'Session expired. Please login again.' };
+                }
+                const result = await response.json();
+                if (!result.success && result.error) {
+                    console.error(`API Error at ${endpoint}:`, result.error);
+                }
+                return result;
+            } catch (err) {
+                console.error(`Network Error at ${endpoint}:`, err);
+                return { success: false, error: 'Network error, please try again.' };
+            }
         }
 
         async function handleLogin() {
             loginError.textContent = '';
-            setLoading(loginBtn, true, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-            try {
-                const response = await fetch(window.location.origin + '/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    isLoggedIn = true;
-                    showDashboard(result.keys || []);
-                } else {
-                    loginError.textContent = result.error || 'Login failed.';
-                    setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-                }
-            } catch (err) {
-                loginError.textContent = 'Network error — check server.';
-                setLoading(loginBtn, false, '<i class="fas fa-sign-in-alt mr-2"></i>Login');
-                console.error(err);
+            setLoading(loginBtn, true, 'Login');
+            const result = await apiRequest('/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
+            });
+            setLoading(loginBtn, false, 'Login');
+            
+            if (result.success) {
+                showDashboard();
+            } else {
+                loginError.textContent = result.error || 'Login failed.';
             }
         }
 
+        async function handleLogout() {
+            await apiRequest('/admin/logout', { method: 'POST' });
+            allKeysData = [];
+            showLogin();
+        }
+
         async function loadKeys() {
-            try {
-                const response = await fetch(window.location.origin + '/admin/keys', { method: 'GET' });
-                if (!response.ok) {
-                    showLogin();
-                    return;
-                }
-                const result = await response.json();
-                if (result.success) {
-                    showDashboard(result.keys);
-                } else {
-                    showLogin();
-                }
-            } catch (err) {
-                console.error('Failed to load keys:', err);
+            const result = await apiRequest('/admin/keys');
+            if (result.success) {
+                allKeysData = result.keys || [];
+                renderKeys(allKeysData);
+            } else {
+                loginError.textContent = 'Failed to load keys. ' + (result.error || '');
                 showLogin();
             }
         }
@@ -199,37 +253,43 @@
                 keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found. Add one to get started!</td></tr>';
                 return;
             }
+            
             keys.forEach(key => {
                 const row = document.createElement('tr');
                 row.dataset.keyId = key.id;
+                
                 const expiryDateObj = key.expiry ? new Date(key.expiry) : null;
                 const expiryDisplay = expiryDateObj ? expiryDateObj.toISOString().split('T')[0] : 'Never';
                 const isExpired = expiryDateObj && new Date(expiryDateObj.toISOString().split('T')[0]) < new Date(new Date().toISOString().split('T')[0]);
                 
-                let keyTypeStr = '';
-                if (key.allow_phone && key.allow_vehicle && key.allow_aadhaar) {
-                    keyTypeStr = '<span class="font-bold text-green-500">Universal</span>';
-                } else if (key.allow_phone) {
-                    keyTypeStr = 'Phone Only';
-                } else if (key.allow_vehicle) {
-                    keyTypeStr = 'Vehicle Only';
-                } else if (key.allow_aadhaar) {
-                    keyTypeStr = 'Aadhaar Only';
+                // --- NEW: Permissions display ---
+                let perms = [];
+                if (key.allow_phone) perms.push('Phone');
+                if (key.allow_vehicle) perms.push('Vehicle');
+                if (key.allow_aadhaar) perms.push('Aadhaar');
+                if (key.allow_family) perms.push('Family');
+                if (key.allow_insta) perms.push('Insta');
+                let permDisplay;
+                if (perms.length === 5) {
+                    permDisplay = '<span class="font-bold text-green-500">Universal</span>';
+                } else if (perms.length === 0) {
+                    permDisplay = '<span class="text-red-500">None</span>';
                 } else {
-                    keyTypeStr = '<span class="text-red-500">None</span>';
+                    permDisplay = perms.join(', ');
                 }
-                
+
                 const deviceLock = key.device_id
                     ? `<i class="fas fa-lock text-yellow-500" title="${key.device_id}"></i>`
                     : `<i class="fas fa-lock-open text-gray-500" title="Not locked"></i>`;
 
                 row.innerHTML = `
-                    <td class="p-3 font-mono text-cyan-400">${key.pin}</td>
-                    <td class="p-3">${key.used_today || 0} / ${key.limit_count || 0}</td>
+                    <td class="p-3 font-mono text-cyan-400 pin-link" data-pin="${key.pin}">${key.pin}</td>
+                    <td class="p-3">${key.used_today || 0} / ${key.limit_count || 10}</td>
                     <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiryDisplay}</td>
-                    <td class="p-3 text-sm">${keyTypeStr}</td>
+                    <td class="p-3 text-xs">${permDisplay}</td>
                     <td class="p-3 text-lg text-center">${deviceLock}</td>
-                    <td class="p-3 text-right">
+                    <td class="p-3 text-right whitespace-nowrap">
+                        <button class="edit-btn px-3 py-1 bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Edit Key"><i class="fas fa-pencil-alt"></i></button>
                         <button class="reset-device-btn px-3 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Reset Device Lock"><i class="fas fa-key"></i></button>
                         <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete Key"><i class="fas fa-trash"></i></button>
                     </td>
@@ -237,133 +297,222 @@
                 keysTableBody.appendChild(row);
             });
 
+            // --- Re-attach all event listeners ---
+            attachTableListeners();
+        }
+
+        function attachTableListeners() {
+            // History
+            document.querySelectorAll('.pin-link').forEach(btn => {
+                btn.addEventListener('click', (e) => showHistory(e.currentTarget.dataset.pin));
+            });
+            
+            // Edit
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => openKeyModal('edit', e.currentTarget.dataset.id));
+            });
+            
+            // Delete
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (!confirm('Delete this key?')) return;
-                    const deleteBtn = e.currentTarget;
-                    setLoading(deleteBtn, true, '<i class="fas fa-trash"></i>');
-                    try {
-                        const res = await fetch(window.location.origin + '/admin/delete', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: parseInt(id, 10) })
-                        });
-                        const json = await res.json();
-                        if (json.success) {
-                            await loadKeys(); 
-                        } else {
-                            alert('Delete error: ' + (json.error || 'unknown'));
-                            setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
-                        }
-                    } catch (err) {
-                        alert('Network error while deleting.');
-                        console.error(err);
-                        setLoading(deleteBtn, false, '<i class="fas fa-trash"></i>');
+                    const id = e.currentTarget.dataset.id;
+                    if (!confirm(`Are you sure you want to delete key: ${id}? This will also delete its search history.`)) return;
+                    
+                    setLoading(e.currentTarget, true);
+                    // --- BUG FIX: Send 'id' (which is the pin) as a string ---
+                    const result = await apiRequest('/admin/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id })
+                    });
+                    
+                    if (result.success) {
+                        await loadKeys(); 
+                    } else {
+                        alert('Delete error: ' + (result.error || 'unknown'));
+                        setLoading(e.currentTarget, false, '<i class="fas fa-trash"></i>');
                     }
                 });
             });
             
+            // Reset Device
             document.querySelectorAll('.reset-device-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (!confirm('Reset the device lock for this key?')) return;
-                    const resetBtn = e.currentTarget;
-                    setLoading(resetBtn, true, '<i class="fas fa-key"></i>');
-                    try {
-                        const res = await fetch(window.location.origin + '/admin/reset_device', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: parseInt(id, 10) })
-                        });
-                        const json = await res.json();
-                        if (json.success) {
-                            await loadKeys(); 
-                        } else {
-                            alert('Reset error: ' + (json.error || 'unknown'));
-                            setLoading(resetBtn, false, '<i class="fas fa-key"></i>');
-                        }
-                    } catch (err) {
-                        alert('Network error while resetting.');
-                        console.error(err);
-                        setLoading(resetBtn, false, '<i class="fas fa-key"></i>');
+                    const id = e.currentTarget.dataset.id;
+                    if (!confirm(`Reset the device lock for key: ${id}?`)) return;
+                    
+                    setLoading(e.currentTarget, true);
+                    // --- BUG FIX: Send 'id' (which is the pin) as a string ---
+                    const result = await apiRequest('/admin/reset_device', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id })
+                    });
+
+                    if (result.success) {
+                        await loadKeys(); 
+                    } else {
+                        alert('Reset error: ' + (result.error || 'unknown'));
+                        setLoading(e.currentTarget, false, '<i class="fas fa-key"></i>');
                     }
                 });
             });
         }
-
-        function openAddModal() {
-            const today = new Date().toISOString().split('T')[0];
-            newExpiryInput.setAttribute('min', today);
-            newPinInput.value = '';
-            newLimitInput.value = '';
-            newExpiryInput.value = '';
+        
+        // --- Key Modal Logic (Add/Edit) ---
+        function openKeyModal(mode = 'add', pin = null) {
+            currentModalMode = mode;
             modalError.textContent = '';
-            newKeyType.value = 'universal'; 
-            addKeyModal.classList.remove('hidden');
-        }
-
-        function closeAddModal() {
-            addKeyModal.classList.add('hidden');
-        }
-
-        async function handleAddKey() {
-            modalError.textContent = '';
-            setLoading(confirmAddBtn, true, '<i class="fas fa-plus mr-2"></i>Create Key');
             
-            const pin = newPinInput.value.trim();
-            const limit = parseInt(newLimitInput.value || '10', 10);
-            const expiry = newExpiryInput.value || null;
-            const key_type = newKeyType.value; 
+            if (mode === 'edit') {
+                const key = allKeysData.find(k => k.pin === pin);
+                if (!key) {
+                    alert('Error: Could not find key data.');
+                    return;
+                }
+                
+                modalTitle.textContent = 'Edit API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
+                
+                modalKeyPin.value = key.pin;
+                modalKeyPin.disabled = true; // Don't allow editing PIN
+                modalKeyPinHidden.value = key.pin; // Store pin for submission
+                modalKeyLimit.value = key.limit_count;
+                modalKeyExpiry.value = key.expiry ? key.expiry.split('T')[0] : '';
+                
+                // Set permissions
+                permCheckboxes.forEach(cb => {
+                    cb.checked = key[`allow_${cb.value}`] == 1;
+                });
+                
+            } else { // 'add' mode
+                modalTitle.textContent = 'Add New API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Key';
+                
+                modalKeyPin.value = '';
+                modalKeyPin.disabled = false;
+                modalKeyPinHidden.value = '';
+                modalKeyLimit.value = '10';
+                modalKeyExpiry.value = '';
+                
+                // Set default permissions
+                permCheckboxes.forEach(cb => {
+                    cb.checked = true; // Default to all on
+                });
+            }
+            keyModal.classList.remove('hidden');
+        }
+
+        function closeKeyModal() {
+            keyModal.classList.add('hidden');
+        }
+
+        async function handleModalConfirm() {
+            modalError.textContent = '';
+            setLoading(modalConfirmBtn, true);
+            
+            const pin = (currentModalMode === 'edit') ? modalKeyPinHidden.value : modalKeyPin.value.trim();
+            const limit = parseInt(modalKeyLimit.value || '10', 10);
+            const expiry = modalKeyExpiry.value || null;
+            
+            let permissions = [];
+            permCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    permissions.push(cb.value);
+                }
+            });
 
             if (!pin) {
                 modalError.textContent = 'PIN cannot be empty.';
-                setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
+                setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
                 return;
             }
             
-            try {
-                const res = await fetch(window.location.origin + '/admin/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        pin, 
-                        limit, 
-                        expiry, 
-                        key_type 
-                    })
-                });
-                const json = await res.json();
-                if (json.success) {
-                    await loadKeys();
-                    closeAddModal();
-                } else {
-                    modalError.textContent = json.error || 'Failed to add key.';
+            const endpoint = (currentModalMode === 'edit') ? '/admin/update' : '/admin/add';
+            const payload = { pin, limit, expiry, permissions };
+            
+            const result = await apiRequest(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (result.success) {
+                await loadKeys();
+                closeKeyModal();
+            } else {
+                modalError.textContent = result.error || 'Failed to save key.';
+            }
+            
+            setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
+        }
+
+        // --- History Modal Logic ---
+        async function showHistory(pin) {
+            historyModalTitle.textContent = `Search History for: ${pin}`;
+            historyModalBody.innerHTML = '<p class="text-center text-gray-400">Loading history...</p>';
+            historyModal.classList.remove('hidden');
+            
+            const result = await apiRequest(`/admin/history?pin=${pin}`);
+            
+            if (result.success && result.history) {
+                if (result.history.length === 0) {
+                    historyModalBody.innerHTML = '<p class="text-center text-gray-400">No search history found for this key.</p>';
+                    return;
                 }
-            } catch (err) {
-                modalError.textContent = 'Network error.';
-                console.error(err);
-            } finally {
-                 setLoading(confirmAddBtn, false, '<i class="fas fa-plus mr-2"></i>Create Key');
+                
+                let tableHtml = `
+                    <table class="w-full text-left text-sm">
+                        <thead class="border-b border-gray-700">
+                            <tr>
+                                <th class="p-2">Date/Time (UTC)</th>
+                                <th class="p-2">Type</th>
+                                <th class="p-2">Query</th>
+                                <th class="p-2">Device ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                result.history.forEach(item => {
+                    const date = new Date(item.timestamp).toLocaleString('en-GB', { timeZone: 'UTC' });
+                    tableHtml += `
+                        <tr class="border-b border-gray-800">
+                            <td class="p-2">${date}</td>
+                            <td class="p-2">${item.lookup_type}</td>
+                            <td class="p-2 font-mono">${item.query}</td>
+                            <td class="p-2 text-xs text-gray-500" title="${item.device_id}">${item.device_id.substring(0, 12)}...</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += '</tbody></table>';
+                historyModalBody.innerHTML = tableHtml;
+                
+            } else {
+                historyModalBody.innerHTML = `<p class="text-center text-red-400">Error: ${result.error || 'Failed to load history'}</p>`;
             }
         }
-
-        async function handleLogout() {
-            try {
-                await fetch(window.location.origin + '/admin/logout', { method: 'POST' });
-            } catch (e) {}
-            isLoggedIn = false;
-            showLogin();
+        
+        function closeHistoryModal() {
+            historyModal.classList.add('hidden');
         }
 
-        // Event listeners
-        if (loginBtn) loginBtn.addEventListener('click', handleLogin);
-        if (passwordInput) passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
-        if (addKeyBtn) addKeyBtn.addEventListener('click', openAddModal);
-        if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeAddModal);
-        if (confirmAddBtn) confirmAddBtn.addEventListener('click', handleAddKey);
-        if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+        // --- Initial Event Listeners ---
+        loginBtn.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
+        logoutBtn.addEventListener('click', handleLogout);
+        
+        // Modal Listeners
+        addKeyBtn.addEventListener('click', () => openKeyModal('add'));
+        modalCancelBtn.addEventListener('click', closeKeyModal);
+        modalConfirmBtn.addEventListener('click', handleModalConfirm);
+        
+        // History Modal Listeners
+        historyModalCloseBtn.addEventListener('click', closeHistoryModal);
 
+        // --- Initial Load ---
+        // Try to load keys on page load, if it fails (401), showLogin() will be called
         loadKeys();
     </script>
 </body>
