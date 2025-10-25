@@ -7,89 +7,112 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap');
         body {
-            font-family: 'Roboto Mono', monospace;
+            font-family: 'Roboto', sans-serif;
             background-color: #0d1117;
             color: #c9d1d9;
         }
-        .glass-card {
-            background: rgba(22, 27, 34, 0.6);
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .service-card {
+            background: rgba(22, 27, 34, 0.7);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(48, 54, 61, 0.5);
             transition: all 0.3s ease;
-        }
-        .service-card {
-            @apply glass-card rounded-xl shadow-2xl p-6 md:p-8 text-center flex flex-col items-center justify-center;
+            transform: perspective(1000px);
         }
         .service-card:hover {
-            transform: translateY(-5px);
+            transform: perspective(1000px) translateY(-8px) translateZ(20px);
             border-color: #3b82f6;
-            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2), 0 8px 10px -6px rgba(59, 130, 246, 0.2);
         }
         .service-card i {
-            @apply text-5xl mb-4;
+            transition: transform 0.3s ease;
         }
-        .service-card h2 {
-            @apply text-2xl font-bold text-gray-200 mb-2;
-        }
-        .service-card p {
-            @apply text-gray-400 text-sm;
+        .service-card:hover i {
+            transform: scale(1.1);
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-5xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-200 tracking-wider">
-                <i class="fas fa-user-secret mr-3"></i>OSINT BY KNOX
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-8">
+    
+    <header class="w-full max-w-6xl mx-auto flex justify-between items-center mb-10">
+        <div>
+            <h1 class="text-2xl font-bold font-mono tracking-wider gradient-text">
+                OSINT by KNOX
             </h1>
-            <p class="text-gray-400 mt-2">Advanced Information Lookup</p>
-        </header>
+        </div>
+        <nav>
+            {% if user_info %}
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-400 hidden md:block">Welcome, <span class="font-medium text-gray-200">{{ user_info.name }}</span></span>
+                    <a href="/logout" class="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">Logout</a>
+                </div>
+            {% else %}
+                <a href="/login" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-white transition-colors text-sm shadow-lg">
+                    User Login
+                </a>
+            {% endif %}
+        </nav>
+    </header>
 
-        <main>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <a href="/search/phone" class="service-card">
-                    <i class="fas fa-mobile-alt text-blue-400"></i>
-                    <h2>Phone Search</h2>
-                    <p>Lookup details from multiple phone databases.</p>
-                </a>
-                
-                <a href="/search/vehicle" class="service-card">
-                    <i class="fas fa-car text-green-400"></i>
-                    <h2>Vehicle Search</h2>
-                    <p>Find RC details from APIs and scrapers.</p>
-                </a>
-                
-                <a href="/search/aadhaar" class="service-card">
-                    <i class="fas fa-id-card text-red-400"></i>
-                    <h2>Aadhaar Info</h2>
-                    <p>Get information linked to an Aadhaar number.</p>
-                </a>
-                
-                <a href="/search/family" class="service-card">
-                    <i class="fas fa-users text-purple-400"></i>
-                    <h2>Aadhaar to Family</h2>
-                    <p>Find family details linked to an Aadhaar.</p>
-                </a>
-                
-                <a href="/search/insta" class="service-card">
-                    <i class="fab fa-instagram text-pink-400"></i>
-                    <h2>Instagram Info</h2>
-                    <p>Get profile details from an Instagram username.</p>
-                </a>
+    <main class="w-full max-w-6xl mx-auto flex-grow">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl md:text-5xl font-bold text-gray-200">
+                Advanced Information Lookup
+            </h2>
+            <p class="text-gray-400 mt-3 text-lg">Select a service to begin your search.</p>
+        </div>
 
-                <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="service-card bg-green-600/20 border-green-500 hover:border-green-400 hover:bg-green-600/30">
-                    <i class="fab fa-whatsapp text-green-400"></i>
-                    <h2>Get API Key</h2>
-                    <p>Contact us on WhatsApp to purchase a key.</p>
-                </a>
-            </div>
-        </main>
-        
-        <footer class="text-center mt-10">
-            <p class="text-gray-500 text-sm">Developer: RAHUL SHARMA</p>
-        </footer>
-    </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <a href="/search/phone" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
+                <i class="fas fa-mobile-alt text-4xl mb-5 text-blue-400 p-4 bg-blue-900/50 rounded-full"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Phone Search</h3>
+                <p class="text-gray-400 text-sm">Lookup details from multiple phone databases.</p>
+            </a>
+            
+            <a href="/search/vehicle" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
+                <i class="fas fa-car text-4xl mb-5 text-green-400 p-4 bg-green-900/50 rounded-full"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Vehicle Search</h3>
+                <p class="text-gray-400 text-sm">Find RC details from APIs and scrapers.</p>
+            </a>
+            
+            <a href="/search/aadhaar" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
+                <i class="fas fa-id-card text-4xl mb-5 text-red-400 p-4 bg-red-900/50 rounded-full"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Aadhaar Info</h3>
+                <p class="text-gray-400 text-sm">Get information linked to an Aadhaar number.</p>
+            </a>
+            
+            <a href="/search/family" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
+                <i class="fas fa-users text-4xl mb-5 text-purple-400 p-4 bg-purple-900/50 rounded-full"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Aadhaar to Family</h3>
+                <p class="text-gray-400 text-sm">Find family details linked to an Aadhaar.</p>
+            </a>
+            
+            <a href="/search/insta" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
+                <i class="fab fa-instagram text-4xl mb-5 text-pink-400 p-4 bg-pink-900/50 rounded-full"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Instagram Info</h3>
+                <p class="text-gray-400 text-sm">Get profile details from an Instagram username.</p>
+            </a>
+
+            <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center bg-green-600/10 border-green-500 hover:bg-green-600/20">
+                <i class="fab fa-whatsapp text-4xl mb-5 text-green-400"></i>
+                <h3 class="text-xl font-bold text-gray-200 mb-2">Get API Key</h3>
+                <p class="text-gray-400 text-sm">Contact us on WhatsApp to purchase a key.</p>
+            </a>
+        </div>
+    </main>
+    
+    <footer class="text-center mt-12 pt-8 border-t border-gray-800">
+        <p class="text-gray-500 text-sm font-mono">Developer: RAHUL SHARMA</p>
+    </footer>
 </body>
 </html>
