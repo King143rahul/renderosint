@@ -99,8 +99,16 @@
             }
         }
 
+        // --- UPDATED: performSearch function ---
         async function performSearch() {
-            const number = numberInput.value.trim();
+            // --- NEW: Cleaning logic ---
+            let number = numberInput.value.trim();
+            if (SERVICE_TYPE === 'phone') {
+                // Remove all spaces, then remove leading +91
+                number = number.replace(/\s+/g, '').replace(/^\+91/, '');
+            }
+            // --- End Cleaning ---
+            
             const pin = pinInput.value.trim();
             const deviceId = getDeviceId(); 
 
@@ -110,9 +118,16 @@
             }
 
             if (!number || !pin) {
-                displayError("Please enter both the number and your API key.");
+                displayError("Please enter both the search query and your API key.");
                 return;
             }
+
+            // --- NEW: 10-digit Validation ---
+            if (SERVICE_TYPE === 'phone' && (number.length !== 10 || !/^\d+$/.test(number))) {
+                displayError("Phone number must be exactly 10 digits.");
+                return;
+            }
+            // --- End Validation ---
 
             setLoading(true);
 
@@ -120,7 +135,7 @@
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: SERVICE_TYPE, number, pin, deviceId })
+                    body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId }) // Send the cleaned number
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
@@ -131,11 +146,14 @@
                 }
                 displayResults(result);
             } catch (error) {
-                displayError(error.message);
+                // This catch block handles the "Unexpected token" error
+                console.error("Search Error:", error);
+                displayError(error.message || "An unexpected error occurred. Please try again.");
             } finally {
                 setLoading(false);
             }
         }
+        // --- END OF UPDATED FUNCTION ---
         
         function handleSearchAgain() {
             resultContainer.innerHTML = '';
@@ -144,7 +162,6 @@
             numberInput.focus();
         }
 
-        // --- FIXED: Moved helper lists to global scope ---
         const junkKeys = [
             'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
             'developer', 'support', 'id', 'credit', 'author', 'result'
@@ -160,28 +177,22 @@
              const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
             return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
         };
-        // --- END OF FIX ---
 
         function renderObject(data) {
             let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
-            
             const allKeys = Object.keys(data);
             const priorityKeys = ['name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'];
             const sortedKeys = [...priorityKeys.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !priorityKeys.includes(k))];
 
             for (const key of sortedKeys) {
                 const value = data[key];
-
                 let valueString = String(value).toLowerCase();
                 let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
-
                 if (junkKeys.includes(key.toLowerCase()) || isJunkValue || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
                     continue;
                 }
-                
                 const label = prettyKey(key);
                 let valueHtml;
-
                 if (key.toLowerCase() === 'image' && typeof value === 'string' && value.startsWith('http')) {
                     valueHtml = `<img src="${value}" alt="Vehicle Image" class="max-w-xs rounded mt-1">`;
                 } else if (typeof value === 'object' && !Array.isArray(value)) {
@@ -199,40 +210,29 @@
             return html;
         }
 
-        // --- UPDATED FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
                  displayError(result.error || 'Failed to retrieve data.');
                  return;
             }
-
             const allKeys = Object.keys(result);
             const dataKeys = allKeys.filter(k => !['status', 'key_status', 'dev'].includes(k));
             if (dataKeys.length === 0) {
                  displayError('No data found for this query.');
                  return;
             }
-
             let htmlContent = '';
             let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
             const resultId = 'result-text-0';
-
-            // --- FIXED: Use SERVICE_TYPE to determine logic ---
+            
             if (SERVICE_TYPE === 'phone' || SERVICE_TYPE === 'vehicle') {
-                // This is for multi-responses (Phone, Vehicle)
                 dataKeys.forEach((key, index) => {
                     const item = result[key];
                     if (typeof item !== 'object' || item === null) return;
-                    
                     const title = item.error ? `Source ${index + 1} (Error)` : `Source ${index + 1}`;
                     const titleColor = item.error ? 'text-red-400' : 'text-cyan-400';
-
-                    htmlContent += `
-                        <div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">
-                            <div class="p-3 border-b border-gray-700"><span class="${titleColor} font-semibold">${title}</span></div>
-                            <div class="p-4 space-y-2 text-sm text-gray-200">
-                    `;
+                    htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4"><div class="p-3 border-b border-gray-700"><span class="${titleColor} font-semibold">${title}</span></div><div class="p-4 space-y-2 text-sm text-gray-200">`;
                     if (item.error) {
                         htmlContent += `<div class="text-red-300">${item.error}</div>`;
                         plainTextContent += `\n--- ${title} ---\nError: ${item.error}\n`;
@@ -240,94 +240,51 @@
                         htmlContent += renderObject(item);
                         plainTextContent += `\n--- ${title} ---\n`;
                         Object.entries(item).forEach(([k, v]) => {
-                            let vString = String(v).toLowerCase();
-                            let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                            if (v !== null && v !== 'NA' && v !== '' && !isJunk) {
-                                plainTextContent += `${prettyKey(k)}: ${v}\n`;
-                            }
+                            let vString = String(v).toLowerCase(); let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                            if (v !== null && v !== 'NA' && v !== '' && !isJunk) { plainTextContent += `${prettyKey(k)}: ${v}\n`; }
                         });
                     }
                     htmlContent += `</div></div>`;
                 });
             } else {
-                // This is for flat responses (Aadhaar, Family, Insta)
-                htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">`; // Card start
-                
+                htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">`;
                 if (result.error) {
-                    // Correctly display top-level errors for Insta/Aadhaar
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-red-400 font-semibold">Result (Error)</span></div>`;
                     htmlContent += `<div class="p-4 text-red-300">${result.error}</div>`;
                     plainTextContent += `--- Result (Error) ---\nError: ${result.error}\n`;
                 } else {
-                    // Display data if no error
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
                     htmlContent += `<div class="p-4 space-y-2 text-sm text-gray-200">`;
                     htmlContent += renderObject(result);
-                    
                     plainTextContent += `--- Result ---\n`;
                     Object.entries(result).forEach(([k, v]) => {
-                        let vString = String(v).toLowerCase();
-                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) {
-                            plainTextContent += `${prettyKey(k)}: ${v}\n`;
-                        }
+                        let vString = String(v).toLowerCase(); let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { plainTextContent += `${prettyKey(k)}: ${v}\n`; }
                     });
                     htmlContent += `</div>`;
                 }
-                htmlContent += `</div>`; // Card end
+                htmlContent += `</div>`;
             }
-            // --- END OF FIX ---
 
             if (result.key_status) {
-                htmlContent += `
-                    <div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2">
-                        <span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span>
-                        <span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span>
-                    </div>
-                `;
+                htmlContent += `<div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2"><span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span><span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span></div>`;
             }
-            
-            htmlContent += `
-                <div class="mt-4">
-                    <button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}">
-                        <i class="fas fa-copy mr-2"></i>Copy All Results
-                    </button>
-                    <textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea>
-                </div>
-            `;
-            
-            htmlContent += `
-                <button id="searchAgainBtn" class="w-full p-3 mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                    <i class="fas fa-search mr-2"></i>Search Again
-                </button>
-            `;
-
+            htmlContent += `<div class="mt-4"><button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-copy mr-2"></i>Copy All Results</button><textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea></div>`;
+            htmlContent += `<button id="searchAgainBtn" class="w-full p-3 mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
             resultContainer.innerHTML = htmlContent;
 
             document.getElementById('copy-all-btn').addEventListener('click', (e) => {
-                const button = e.currentTarget;
-                const textToCopy = document.getElementById(button.dataset.target).value;
+                const button = e.currentTarget; const textToCopy = document.getElementById(button.dataset.target).value;
                 navigator.clipboard.writeText(textToCopy).then(() => {
-                    button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
-                    button.classList.add('bg-green-700', 'text-white');
-                    setTimeout(() => {
-                        button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy All Results';
-                        button.classList.remove('bg-green-700', 'text-white');
-                    }, 2000);
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!'; button.classList.add('bg-green-700', 'text-white');
+                    setTimeout(() => { button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy All Results'; button.classList.remove('bg-green-700', 'text-white'); }, 2000);
                 });
             });
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
 
         function displayError(msg) {
-            resultContainer.innerHTML = `
-                <div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>${msg}
-                </div>
-                <button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                    <i class="fas fa-search mr-2"></i>Search Again
-                </button>
-            `;
+            resultContainer.innerHTML = `<div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center"><i class="fas fa-exclamation-triangle mr-2"></i>${msg}</div><button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
 
@@ -338,10 +295,7 @@
         
         function loadSavedPin() {
             const savedPin = localStorage.getItem('osintApiKey');
-            if (savedPin) {
-                pinInput.value = savedPin;
-                savePinCheck.checked = true;
-            }
+            if (savedPin) { pinInput.value = savedPin; savePinCheck.checked = true; }
         }
         
         loadSavedPin();
