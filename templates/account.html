@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account - OSINT by KNOX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap');
+        body { font-family: 'Roboto', sans-serif; background-color: #0d1117; color: #c9d1d9; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        .glass-card { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); }
+        .btn { @apply px-4 py-2 rounded-lg font-medium text-white transition-colors text-sm shadow; }
+        .btn-blue { @apply bg-blue-600 hover:bg-blue-700; }
+        .btn-red { @apply bg-red-600 hover:bg-red-700; }
+        .btn-gray { @apply bg-gray-600 hover:bg-gray-700; }
+        .btn-sm { @apply px-2 py-1 text-xs; }
+        .input { @apply w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <header class="w-full max-w-4xl mx-auto flex justify-between items-center mb-10">
+        <div>
+            <h1 class="text-2xl font-bold font-mono tracking-wider text-gray-200">
+                <i class="fas fa-user-circle mr-3 text-blue-400"></i>My Account
+            </h1>
+        </div>
+        <nav>
+            <a href="/" class="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Home
+            </a>
+        </nav>
+    </header>
+
+    <main class="w-full max-w-4xl mx-auto">
+        
+        <div class="glass-card rounded-xl p-6 md:p-8 mb-6">
+            <h2 class="text-2xl font-bold text-white mb-4">My Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-gray-400">Name</label>
+                    <p class="text-lg font-medium text-gray-200">{{ user_name }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Phone Number</label>
+                    <p class="text-lg font-medium text-gray-200 font-mono">{{ user_phone }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card rounded-xl p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-white mb-4">My API Key</h2>
+            
+            <div id="api-message" class="text-center text-sm mb-4"></div>
+
+            {% if not key_info %}
+            <div id="link-key-view">
+                <p class="text-gray-400 mb-4">You do not have an API key linked to your account. Please link your key to manage it.</p>
+                <div class="space-y-4">
+                    <input id="pin-input" type="text" placeholder="Enter your API Key (PIN)" class="input">
+                    <button id="link-key-btn" class="btn btn-blue w-full">Link Key</button>
+                </div>
+            </div>
+            {% else %}
+            <div id="manage-key-view">
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Key Status</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-400">API Key (PIN)</label>
+                            <p id="key-pin-display" class="text-lg font-medium text-cyan-400 font-mono">{{ key_info.pin }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Searches Today</label>
+                            <p class="text-lg font-medium text-gray-200">{{ key_info.used_today }} / {{ key_info.limit_count }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Expires</label>
+                            <p class="text-lg font-medium text-gray-200">{{ key_info.expiry or 'Never' }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Device Limit</label>
+                            <p class="text-lg font-medium text-gray-200">{{ (key_info.device_ids or [])|length }} / {{ key_info.device_limit }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Permissions</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_phone else 'bg-gray-700 text-gray-400' }}">
+                            <i class="fas {{ 'fa-check' if key_info.allow_phone else 'fa-times' }}"></i> Phone
+                        </span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_vehicle else 'bg-gray-700 text-gray-400' }}">
+                            <i class="fas {{ 'fa-check' if key_info.allow_vehicle else 'fa-times' }}"></i> Vehicle
+                        </span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_aadhaar else 'bg-gray-700 text-gray-400' }}">
+                            <i class="fas {{ 'fa-check' if key_info.allow_aadhaar else 'fa-times' }}"></i> Aadhaar
+                        </span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_family else 'bg-gray-700 text-gray-400' }}">
+                            <i class="fas {{ 'fa-check' if key_info.allow_family else 'fa-times' }}"></i> Family
+                        </span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_insta else 'bg-gray-700 text-gray-400' }}">
+                            <i class="fas {{ 'fa-check' if key_info.allow_insta else 'fa-times' }}"></i> Instagram
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Manage Devices</h3>
+                    <div class="space-y-2">
+                        {% if key_info.device_ids %}
+                            {% for device in key_info.device_ids %}
+                            <div class="flex justify-between items-center p-3 bg-gray-900 rounded-lg">
+                                <span class="font-mono text-sm text-gray-400">{{ device }}</span>
+                                <button class="btn btn-red btn-sm remove-device-btn" data-deviceid="{{ device }}">
+                                    <i class="fas fa-trash mr-1"></i> Remove
+                                </button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-gray-500 text-sm">No devices have been linked to this key yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Change PIN</h3>
+                    <div class="flex gap-4">
+                        <input id="new-pin-input" type="text" placeholder="Enter new PIN" class="input flex-grow">
+                        <button id="change-pin-btn" class="btn btn-blue">Save PIN</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Unlink Key</h3>
+                    <p class="text-sm text-gray-400 mb-3">If you want to link a different key to this account, you must first unlink the current one.</p>
+                    <button id="unlink-key-btn" class="btn btn-red">Unlink This Key</button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    
+    <script>
+        function setLoading(button, isLoading, originalText = null) {
+            if (!button) return;
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                button.disabled = false;
+                button.innerHTML = originalText || button.dataset.originalText || 'Submit';
+            }
+        }
+        
+        const apiMessage = document.getElementById('api-message');
+        function showMessage(message, isError = false) {
+            apiMessage.textContent = message;
+            apiMessage.className = isError ? 'text-red-400 text-center text-sm mb-4' : 'text-green-400 text-center text-sm mb-4';
+            setTimeout(() => apiMessage.textContent = '', 4000);
+        }
+
+        async function apiRequest(endpoint, payload, button) {
+            let originalText = button.innerHTML;
+            setLoading(button, true);
+            try {
+                const response = await fetch(window.location.origin + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'An unknown error occurred.');
+                }
+                showMessage(result.message || 'Success!', false);
+                setTimeout(() => location.reload(), 1500); // Reload on success
+            } catch (err) {
+                showMessage(err.message, true);
+                setLoading(button, false, originalText);
+            }
+        }
+
+        // --- Link Key View ---
+        const linkKeyBtn = document.getElementById('link-key-btn');
+        if (linkKeyBtn) {
+            linkKeyBtn.addEventListener('click', (e) => {
+                const pin = document.getElementById('pin-input').value;
+                if (!pin) {
+                    showMessage('Please enter a PIN.', true);
+                    return;
+                }
+                apiRequest('/api/account/link_key', { pin }, e.currentTarget);
+            });
+        }
+
+        // --- Manage Key View ---
+        const changePinBtn = document.getElementById('change-pin-btn');
+        if (changePinBtn) {
+            changePinBtn.addEventListener('click', (e) => {
+                const newPin = document.getElementById('new-pin-input').value;
+                if (!newPin || newPin.length < 4) {
+                    showMessage('New PIN must be at least 4 characters.', true);
+                    return;
+                }
+                if (newPin === document.getElementById('key-pin-display').textContent) {
+                    showMessage('This is already your PIN.', true);
+                    return;
+                }
+                apiRequest('/api/account/change_pin', { new_pin: newPin }, e.currentTarget);
+            });
+        }
+
+        const unlinkKeyBtn = document.getElementById('unlink-key-btn');
+        if (unlinkKeyBtn) {
+            unlinkKeyBtn.addEventListener('click', (e) => {
+                if (confirm('Are you sure you want to unlink this key from your account?')) {
+                    apiRequest('/api/account/unlink_key', {}, e.currentTarget);
+                }
+            });
+        }
+        
+        document.querySelectorAll('.remove-device-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const deviceId = e.currentTarget.dataset.deviceid;
+                if (confirm('Are you sure you want to remove this device?')) {
+                    apiRequest('/api/account/remove_device', { device_id: deviceId }, e.currentTarget);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
