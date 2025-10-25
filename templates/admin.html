@@ -18,6 +18,7 @@
         .modal-body { max-height: 80vh; overflow-y: auto; }
         .tab-btn { @apply px-4 py-2 font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:border-gray-500; }
         .tab-btn.active { @apply text-blue-400 border-blue-400; }
+        .stat-card { @apply glass-card rounded-xl p-6; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -44,16 +45,63 @@
 
         <div class="border-b border-gray-700 mb-6">
             <nav class="flex -mb-px">
-                <button id="tab-keys" class="tab-btn active" data-target="panel-keys"><i class="fas fa-key mr-2"></i>API Keys</button>
+                <button id="tab-dashboard" class="tab-btn active" data-target="panel-dashboard"><i class="fas fa-chart-line mr-2"></i>Dashboard</button>
+                <button id="tab-keys" class="tab-btn" data-target="panel-keys"><i class="fas fa-key mr-2"></i>API Keys</button>
                 <button id="tab-users" class="tab-btn" data-target="panel-users"><i class="fas fa-users mr-2"></i>Users</button>
                 <button id="tab-settings" class="tab-btn" data-target="panel-settings"><i class="fas fa-cog mr-2"></i>Settings</button>
             </nav>
         </div>
 
         <main>
-            <div id="panel-keys" class="tab-panel">
-                <div class="flex justify-end mb-4">
-                    <button id="add-key-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white"><i class="fas fa-plus mr-2"></i>Add New Key</button>
+            <div id="panel-dashboard" class="tab-panel">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="stat-card">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Total Searches Today</h4>
+                        <p id="stat-total-searches" class="text-4xl font-bold text-blue-400">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Active Keys</h4>
+                        <p id="stat-active-keys" class="text-4xl font-bold text-green-400">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Total Registered Users</h4>
+                        <p id="stat-total-users" class="text-4xl font-bold text-yellow-400">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Popular Service (7d)</h4>
+                        <p id="stat-popular-service" class="text-3xl font-bold text-purple-400 truncate">N/A</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="glass-card rounded-xl p-4 md:p-6">
+                        <h3 class="text-xl font-bold mb-4">Top 5 Keys (Today)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-gray-700 text-sm">
+                                    <tr><th class="p-2">PIN</th><th class="p-2">Usage</th></tr>
+                                </thead>
+                                <tbody id="table-top-keys"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-xl p-4 md:p-6">
+                        <h3 class="text-xl font-bold mb-4">Recent Searches (Live)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-gray-700 text-sm">
+                                    <tr><th class="p-2">Time</th><th class="p-2">PIN</th><th class="p-2">Type</th><th class="p-2">Query</th></tr>
+                                </thead>
+                                <tbody id="table-recent-searches"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-keys" class="tab-panel hidden">
+                <div class="flex justify-end mb-4 gap-4">
+                    <button id="batch-add-key-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i class="fas fa-layer-group mr-2"></i>Batch Generate</button>
+                    <button id="add-key-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white"><i class="fas fa-plus mr-2"></i>Add Single Key</button>
                 </div>
                 <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
                     <div class="overflow-x-auto">
@@ -75,6 +123,13 @@
             </div>
 
             <div id="panel-users" class="tab-panel hidden">
+                <div class="flex justify-end mb-4">
+                    <div class="flex gap-2">
+                        <input id="user-search-input" type="text" placeholder="Search by name or phone..." class="p-2 bg-gray-900 border border-gray-700 rounded-lg">
+                        <button id="user-search-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i class="fas fa-search"></i></button>
+                        <button id="user-search-clear-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
                 <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -82,8 +137,9 @@
                                 <tr>
                                     <th class="p-3 text-sm font-semibold">Name</th>
                                     <th class="p-3 text-sm font-semibold">Phone</th>
-                                    <th class="p-3 text-sm font-semibold">First Login (UTC)</th>
+                                    <th class="p-3 text-sm font-semibold">Status</th>
                                     <th class="p-3 text-sm font-semibold">Last Login (UTC)</th>
+                                    <th class="p-3 text-sm font-semibold text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body"></tbody>
@@ -93,18 +149,27 @@
             </div>
 
             <div id="panel-settings" class="tab-panel hidden">
-                <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-2xl mx-auto">
-                    <h3 class="text-xl font-bold mb-4">Global Settings</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="global-note-text" class="block text-sm font-medium text-gray-400 mb-2">Global Note</label>
-                            <p class="text-xs text-gray-500 mb-2">This note will be shown to all users on all search pages.</p>
-                            <textarea id="global-note-text" rows="4" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Server maintenance from 2-4 PM..."></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+                        <h3 class="text-xl font-bold mb-4">Global Note</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-2">This note will be shown to all users on all search pages.</p>
+                                <textarea id="global-note-text" rows="4" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Server maintenance..."></textarea>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="save-note-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white">Save Note</button>
+                            </div>
+                            <div id="note-save-status" class="text-center text-sm"></div>
                         </div>
-                        <div class="flex justify-end">
-                            <button id="save-note-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white">Save Note</button>
+                    </div>
+                    <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+                        <h3 class="text-xl font-bold mb-4">API Health</h3>
+                        <div class="space-y-4">
+                            <p class="text-xs text-gray-500 mb-2">Check the status of all external APIs.</p>
+                            <button id="api-health-check-btn" class="w-full px-5 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold text-white">Run API Health Check</button>
+                            <div id="api-health-results" class="space-y-2 max-h-60 overflow-y-auto"></div>
                         </div>
-                        <div id="note-save-status" class="text-center text-sm"></div>
                     </div>
                 </div>
             </div>
@@ -115,7 +180,6 @@
         <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
             <h2 id="modal-title" class="text-2xl font-bold">Add New API Key</h2>
             <input type="hidden" id="modal-key-pin-hidden">
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-400">API Key (PIN)</label>
@@ -136,18 +200,16 @@
                     <input id="modal-key-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
                 </div>
             </div>
-            
             <div>
                 <label class="text-sm text-gray-400">Permissions</label>
                 <div class="grid grid-cols-2 gap-2 mt-2">
                     <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="perm-check"> <span>Phone</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="perm-check"> <span>Vehicle</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="perm-check"> <span>Aadhaar</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check"> <span>Aadhaar Family</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check"> <span>Family</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="perm-check"> <span>Instagram</span></label>
                 </div>
             </div>
-            
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
             <div class="flex gap-4">
                 <button id="modal-confirm-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
@@ -156,6 +218,51 @@
         </div>
     </div>
     
+    <div id="batch-key-modal" class="modal hidden">
+        <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
+            <h2 class="text-2xl font-bold">Batch Generate Keys</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-gray-400">Number to Create</label>
+                    <input id="batch-key-count" type="number" placeholder="e.g., 10" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">PIN Prefix (Optional)</label>
+                    <input id="batch-key-prefix" placeholder="e.g., NEW-" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-gray-400">Daily Limit</label>
+                    <input id="batch-key-limit" type="number" value="10" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400">Device Limit</label>
+                    <input id="batch-key-device-limit" type="number" value="1" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                </div>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">Expiry Date</label>
+                <input id="batch-key-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400">Permissions (All keys)</label>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="batch-perm-check" checked> <span>Phone</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="batch-perm-check" checked> <span>Vehicle</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="batch-perm-check" checked> <span>Aadhaar</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="batch-perm-check" checked> <span>Family</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="batch-perm-check" checked> <span>Instagram</span></label>
+                </div>
+            </div>
+            <div id="batch-modal-error" class="text-red-400 text-center text-sm"></div>
+            <div class="flex gap-4">
+                <button id="batch-modal-confirm-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Generate Keys</button>
+                <button id="batch-modal-cancel-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="history-modal" class="modal hidden">
         <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-3xl space-y-6">
             <h2 id="history-modal-title" class="text-2xl font-bold">Search History</h2>
@@ -165,7 +272,6 @@
             </div>
         </div>
     </div>
-
 
     <script>
         // Global state
@@ -185,17 +291,33 @@
         // Dashboard
         const logoutBtn = document.getElementById('logoutBtn');
         const addKeyBtn = document.getElementById('add-key-btn');
+        const batchAddKeyBtn = document.getElementById('batch-add-key-btn');
         const keysTableBody = document.getElementById('keys-table-body');
         const usersTableBody = document.getElementById('users-table-body');
+
+        // Dashboard Stats
+        const statTotalSearches = document.getElementById('stat-total-searches');
+        const statActiveKeys = document.getElementById('stat-active-keys');
+        const statTotalUsers = document.getElementById('stat-total-users');
+        const statPopularService = document.getElementById('stat-popular-service');
+        const tableTopKeys = document.getElementById('table-top-keys');
+        const tableRecentSearches = document.getElementById('table-recent-searches');
 
         // Tabs
         const tabButtons = document.querySelectorAll('.tab-btn');
         const tabPanels = document.querySelectorAll('.tab-panel');
 
+        // Users Panel
+        const userSearchInput = document.getElementById('user-search-input');
+        const userSearchBtn = document.getElementById('user-search-btn');
+        const userSearchClearBtn = document.getElementById('user-search-clear-btn');
+
         // Settings Panel
         const globalNoteText = document.getElementById('global-note-text');
         const saveNoteBtn = document.getElementById('save-note-btn');
         const noteSaveStatus = document.getElementById('note-save-status');
+        const apiHealthCheckBtn = document.getElementById('api-health-check-btn');
+        const apiHealthResults = document.getElementById('api-health-results');
 
         // Add/Edit Key Modal
         const keyModal = document.getElementById('key-modal');
@@ -210,6 +332,18 @@
         const modalError = document.getElementById('modal-error');
         const permCheckboxes = document.querySelectorAll('.perm-check');
         
+        // Batch Key Modal
+        const batchKeyModal = document.getElementById('batch-key-modal');
+        const batchModalConfirmBtn = document.getElementById('batch-modal-confirm-btn');
+        const batchModalCancelBtn = document.getElementById('batch-modal-cancel-btn');
+        const batchKeyCount = document.getElementById('batch-key-count');
+        const batchKeyPrefix = document.getElementById('batch-key-prefix');
+        const batchKeyLimit = document.getElementById('batch-key-limit');
+        const batchKeyDeviceLimit = document.getElementById('batch-key-device-limit');
+        const batchKeyExpiry = document.getElementById('batch-key-expiry');
+        const batchPermCheckboxes = document.querySelectorAll('.batch-perm-check');
+        const batchModalError = document.getElementById('batch-modal-error');
+
         // History Modal
         const historyModal = document.getElementById('history-modal');
         const historyModalTitle = document.getElementById('history-modal-title');
@@ -229,7 +363,9 @@
             }
         }
         
-        modalKeyExpiry.setAttribute('min', new Date().toISOString().split('T')[0]);
+        const today = new Date().toISOString().split('T')[0];
+        modalKeyExpiry.setAttribute('min', today);
+        batchKeyExpiry.setAttribute('min', today);
 
         // --- View Management ---
         function showLogin() {
@@ -240,9 +376,10 @@
         function showDashboard() {
             loginView.classList.add('hidden');
             dashboardView.classList.remove('hidden');
-            loadKeys(); // Load keys by default
-            loadUsers(); // Load users
-            loadSettings(); // Load settings
+            loadDashboardStats();
+            loadKeys();
+            loadUsers();
+            loadSettings();
         }
 
         // --- Tab Switching ---
@@ -250,7 +387,6 @@
             button.addEventListener('click', () => {
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 tabPanels.forEach(panel => panel.classList.add('hidden'));
-                
                 button.classList.add('active');
                 document.getElementById(button.dataset.target).classList.remove('hidden');
             });
@@ -294,6 +430,31 @@
         }
 
         // --- Data Loading ---
+        async function loadDashboardStats() {
+            const result = await apiRequest('/admin/dashboard_stats');
+            if (!result.success) return;
+            const stats = result.stats;
+            
+            statTotalSearches.textContent = stats.total_searches_today;
+            statActiveKeys.textContent = stats.active_keys;
+            statTotalUsers.textContent = stats.total_users;
+            statPopularService.textContent = stats.popular_services.length > 0 ? stats.popular_services[0]._id : 'N/A';
+            
+            tableTopKeys.innerHTML = stats.top_5_keys.map(k => `
+                <tr class="border-b border-gray-800"><td class="p-2 font-mono text-cyan-400">${k.pin}</td><td class="p-2">${k.used_today}</td></tr>
+            `).join('');
+            
+            tableRecentSearches.innerHTML = stats.recent_searches.map(s => {
+                const time = new Date(s.timestamp).toLocaleTimeString();
+                return `<tr class="border-b border-gray-800 text-sm">
+                    <td class="p-2 text-gray-400">${time}</td>
+                    <td class="p-2 font-mono text-cyan-400">${s.pin.substring(0, 10)}...</td>
+                    <td class="p-2">${s.lookup_type}</td>
+                    <td class="p-2 font-mono">${s.query.substring(0, 15)}...</td>
+                </tr>`
+            }).join('');
+        }
+
         async function loadKeys() {
             const result = await apiRequest('/admin/keys');
             if (result.success) {
@@ -304,16 +465,15 @@
             }
         }
         
-        async function loadUsers() {
-            const result = await apiRequest('/admin/users');
+        async function loadUsers(searchQuery = '') {
+            const result = await apiRequest(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
             if (result.success) renderUsers(result.users || []);
             else alert('Failed to load users: ' + (result.error || 'Unknown error'));
         }
         
         async function loadSettings() {
-            const result = await apiRequest('/admin/note'); // GET by default
+            const result = await apiRequest('/admin/note'); // GET
             if (result.success) globalNoteText.value = result.note || '';
-            else alert('Failed to load settings: ' + (result.error || 'Unknown error'));
         }
 
         // --- Data Rendering ---
@@ -325,20 +485,19 @@
             }
             keys.forEach(key => {
                 const expiry = key.expiry ? new Date(key.expiry).toISOString().split('T')[0] : 'Never';
-                const isExpired = key.expiry && new Date(expiry) < new Date(new Date().toISOString().split('T')[0]);
+                const isExpired = key.expiry && new Date(expiry) < new Date(today);
                 
                 let perms = [];
-                if (key.allow_phone) perms.push('Phone');
-                if (key.allow_vehicle) perms.push('Vehicle');
-                if (key.allow_aadhaar) perms.push('Aadhaar');
-                if (key.allow_family) perms.push('Family');
+                if (key.allow_phone) perms.push('Ph');
+                if (key.allow_vehicle) perms.push('Veh');
+                if (key.allow_aadhaar) perms.push('Aad');
+                if (key.allow_family) perms.push('Fam');
                 if (key.allow_insta) perms.push('Insta');
-                let permDisplay = perms.length === 5 ? '<span class="font-bold text-green-500">Universal</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
+                let permDisplay = perms.length === 5 ? '<span class="font-bold text-green-500">All</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
 
-                // --- NEW: Device Lock Display ---
                 const deviceCount = (key.device_ids || []).length;
                 const deviceLimit = key.device_limit || 1;
-                const deviceLock = `${deviceCount} / ${deviceLimit} Devices`;
+                const deviceLock = `${deviceCount} / ${deviceLimit}`;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -348,9 +507,10 @@
                     <td class="p-3 text-xs">${permDisplay}</td>
                     <td class="p-3 text-sm ${deviceCount >= deviceLimit ? 'text-yellow-500' : ''}">${deviceLock}</td>
                     <td class="p-3 text-right whitespace-nowrap">
-                        <button class="edit-btn px-3 py-1 bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Edit Key"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="reset-device-btn px-3 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full mr-2" data-id="${key.id}" title="Reset Device Lock"><i class="fas fa-key"></i></button>
-                        <button class="delete-btn px-3 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete Key"><i class="fas fa-trash"></i></button>
+                        <button class="edit-btn px-2 py-1 bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="reset-usage-btn px-2 py-1 bg-green-800 hover:bg-green-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Usage"><i class="fas fa-sync-alt"></i></button>
+                        <button class="reset-device-btn px-2 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Devices"><i class="fas fa-key"></i></button>
+                        <button class="delete-btn px-2 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 keysTableBody.appendChild(row);
@@ -361,21 +521,31 @@
         function renderUsers(users) {
             usersTableBody.innerHTML = '';
             if (!users || users.length === 0) {
-                usersTableBody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-500">No users have logged in yet.</td></tr>';
+                usersTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No users found.</td></tr>';
                 return;
             }
             users.forEach(user => {
-                const firstLogin = user.first_login ? new Date(user.first_login).toLocaleString('en-GB', { timeZone: 'UTC' }) : 'N/A';
                 const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString('en-GB', { timeZone: 'UTC' }) : 'N/A';
+                const isBanned = user.is_banned || false;
+                const banBtnClass = isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+                const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban';
+                const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="p-3">${user.name}</td>
                     <td class="p-3 font-mono">${user.phone}</td>
-                    <td class="p-3 text-sm">${firstLogin}</td>
+                    <td class="p-3 ${isBanned ? 'text-red-500' : 'text-green-500'}">${isBanned ? 'Banned' : 'Active'}</td>
                     <td class="p-3 text-sm">${lastLogin}</td>
+                    <td class="p-3 text-right">
+                        <button class="ban-user-btn px-3 py-1 ${banBtnClass} text-white text-xs font-bold rounded-full" data-phone="${user.phone}" data-banned="${isBanned}" title="${banBtnTitle}">
+                            <i class="fas ${banBtnIcon}"></i>
+                        </button>
+                    </td>
                 `;
                 usersTableBody.appendChild(row);
             });
+            attachUserTableListeners();
         }
 
         // --- Settings Panel ---
@@ -388,55 +558,100 @@
                 body: JSON.stringify({ note: globalNoteText.value })
             });
             setLoading(saveNoteBtn, false, 'Save Note');
-            if (result.success) {
-                noteSaveStatus.textContent = 'Note saved successfully!';
-                noteSaveStatus.className = 'text-center text-sm text-green-400';
-            } else {
-                noteSaveStatus.textContent = `Error: ${result.error || 'Could not save note'}`;
-                noteSaveStatus.className = 'text-center text-sm text-red-400';
-            }
+            noteSaveStatus.textContent = result.success ? 'Note saved!' : `Error: ${result.error}`;
+            noteSaveStatus.className = result.success ? 'text-green-400' : 'text-red-400';
             setTimeout(() => noteSaveStatus.textContent = '', 3000);
+        }
+
+        async function handleApiHealthCheck() {
+            setLoading(apiHealthCheckBtn, true, 'Checking...');
+            apiHealthResults.innerHTML = '<p>Running checks...</p>';
+            const result = await apiRequest('/admin/api_health');
+            setLoading(apiHealthCheckBtn, false, 'Run API Health Check');
+            if (result.success) {
+                apiHealthResults.innerHTML = result.results.map(res => {
+                    const statusClass = res.status === 'OK' ? 'text-green-500' : (res.status === 'Failed' ? 'text-red-500' : 'text-yellow-500');
+                    return `
+                        <div class="text-sm p-2 border-b border-gray-700">
+                            <span class_="${statusClass} font-bold">${res.status}</span> - ${res.name}
+                            <p class="text-xs text-gray-400 pl-4">${res.message}</p>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                apiHealthResults.innerHTML = `<p class="text-red-500">Error: ${result.error}</p>`;
+            }
         }
 
         // --- Table Listeners ---
         function attachTableListeners() {
-            document.querySelectorAll('.pin-link').forEach(btn => {
-                btn.addEventListener('click', (e) => showHistory(e.currentTarget.dataset.pin));
-            });
-            document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => openKeyModal('edit', e.currentTarget.dataset.id));
-            });
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    if (!confirm(`Delete key: ${id}?`)) return;
-                    setLoading(e.currentTarget, true);
-                    const result = await apiRequest('/admin/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: id })
-                    });
-                    if (result.success) await loadKeys();
-                    else alert('Delete error: ' + (result.error || 'unknown'));
-                });
-            });
-            document.querySelectorAll('.reset-device-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    if (!confirm(`Reset all devices for key: ${id}?`)) return;
-                    setLoading(e.currentTarget, true);
-                    const result = await apiRequest('/admin/reset_device', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: id })
-                    });
-                    if (result.success) await loadKeys();
-                    else alert('Reset error: ' + (result.error || 'unknown'));
-                });
-            });
+            document.querySelectorAll('.pin-link').forEach(btn => btn.addEventListener('click', (e) => showHistory(e.currentTarget.dataset.pin)));
+            document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => openKeyModal('edit', e.currentTarget.dataset.id)));
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteKey(e.currentTarget)));
+            document.querySelectorAll('.reset-device-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetDevice(e.currentTarget)));
+            document.querySelectorAll('.reset-usage-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetUsage(e.currentTarget)));
         }
         
-        // --- Key Modal Logic ---
+        async function handleDeleteKey(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Delete key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Delete error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-trash"></i>');
+            }
+        }
+        
+        async function handleResetDevice(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset all devices for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-key"></i>');
+            }
+        }
+        
+        async function handleResetUsage(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset daily usage for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-sync-alt"></i>');
+            }
+        }
+
+        function attachUserTableListeners() {
+            document.querySelectorAll('.ban-user-btn').forEach(btn => btn.addEventListener('click', (e) => handleBanUser(e.currentTarget)));
+        }
+
+        async function handleBanUser(button) {
+            const phone = button.dataset.phone;
+            const isBanned = button.dataset.banned === 'true';
+            const action = isBanned ? 'unban' : 'ban';
+            if (!confirm(`Are you sure you want to ${action} user ${phone}?`)) return;
+            
+            setLoading(button, true);
+            const result = await apiRequest('/admin/ban_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone, ban_status: !isBanned })
+            });
+            if (result.success) await loadUsers(userSearchInput.value);
+            else {
+                alert(`Error: ${result.error || 'unknown'}`);
+                setLoading(button, false, isBanned ? '<i class="fas fa-check"></i>' : '<i class="fas fa-ban"></i>');
+            }
+        }
+
+        // --- Key Modal Logic (Add/Edit) ---
         function openKeyModal(mode = 'add', pin = null) {
             currentModalMode = mode;
             modalError.textContent = '';
@@ -444,17 +659,15 @@
             if (mode === 'edit') {
                 const key = allKeysData.find(k => k.pin === pin);
                 if (!key) return;
-                
                 modalTitle.textContent = 'Edit API Key';
                 modalConfirmBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
                 modalKeyPin.value = key.pin;
                 modalKeyPin.disabled = true;
                 modalKeyPinHidden.value = key.pin;
                 modalKeyLimit.value = key.limit_count;
-                modalKeyDeviceLimit.value = key.device_limit || 1; // --- NEW ---
+                modalKeyDeviceLimit.value = key.device_limit || 1;
                 modalKeyExpiry.value = key.expiry ? key.expiry.split('T')[0] : '';
                 permCheckboxes.forEach(cb => cb.checked = key[`allow_${cb.value}`] == 1);
-                
             } else {
                 modalTitle.textContent = 'Add New API Key';
                 modalConfirmBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Key';
@@ -462,16 +675,14 @@
                 modalKeyPin.disabled = false;
                 modalKeyPinHidden.value = '';
                 modalKeyLimit.value = '10';
-                modalKeyDeviceLimit.value = '1'; // --- NEW ---
+                modalKeyDeviceLimit.value = '1';
                 modalKeyExpiry.value = '';
                 permCheckboxes.forEach(cb => cb.checked = true);
             }
             keyModal.classList.remove('hidden');
         }
 
-        function closeKeyModal() {
-            keyModal.classList.add('hidden');
-        }
+        function closeKeyModal() { keyModal.classList.add('hidden'); }
 
         async function handleModalConfirm() {
             modalError.textContent = '';
@@ -479,7 +690,7 @@
             
             const pin = (currentModalMode === 'edit') ? modalKeyPinHidden.value : modalKeyPin.value.trim();
             const limit = parseInt(modalKeyLimit.value || '10', 10);
-            const device_limit = parseInt(modalKeyDeviceLimit.value || '1', 10); // --- NEW ---
+            const device_limit = parseInt(modalKeyDeviceLimit.value || '1', 10);
             const expiry = modalKeyExpiry.value || null;
             let permissions = [];
             permCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
@@ -491,14 +702,9 @@
             }
             
             const endpoint = (currentModalMode === 'edit') ? '/admin/update' : '/admin/add';
-            const payload = { pin, limit, expiry, permissions, device_limit }; // --- NEW: Added device_limit
+            const payload = { pin, limit, expiry, permissions, device_limit };
             
-            const result = await apiRequest(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
+            const result = await apiRequest(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (result.success) {
                 await loadKeys();
                 closeKeyModal();
@@ -507,17 +713,64 @@
             }
             setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
         }
+        
+        // --- Batch Key Modal Logic ---
+        function openBatchKeyModal() {
+            batchModalError.textContent = '';
+            batchKeyCount.value = '10';
+            batchKeyPrefix.value = '';
+            batchKeyLimit.value = '10';
+            batchKeyDeviceLimit.value = '1';
+            batchKeyExpiry.value = '';
+            batchPermCheckboxes.forEach(cb => cb.checked = true);
+            batchKeyModal.classList.remove('hidden');
+        }
+        
+        function closeBatchKeyModal() { batchKeyModal.classList.add('hidden'); }
+        
+        async function handleBatchModalConfirm() {
+            batchModalError.textContent = '';
+            const count = parseInt(batchKeyCount.value, 10);
+            if (!count || count <= 0 || count > 100) {
+                batchModalError.textContent = 'Count must be between 1 and 100.';
+                return;
+            }
+            
+            setLoading(batchModalConfirmBtn, true, 'Generating...');
+            
+            let permissions = [];
+            batchPermCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
+            
+            const payload = {
+                count: count,
+                prefix: batchKeyPrefix.value.trim(),
+                limit: parseInt(batchKeyLimit.value || '10', 10),
+                device_limit: parseInt(batchKeyDeviceLimit.value || '1', 10),
+                expiry: batchKeyExpiry.value || null,
+                permissions: permissions
+            };
+            
+            const result = await apiRequest('/admin/batch_add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (result.success) {
+                await loadKeys();
+                closeBatchKeyModal();
+                alert(result.message || 'Batch job complete.');
+            } else {
+                batchModalError.textContent = result.error || 'Failed to generate keys.';
+            }
+            setLoading(batchModalConfirmBtn, false, 'Generate Keys');
+        }
 
         // --- History Modal Logic ---
         async function showHistory(pin) {
             historyModalTitle.textContent = `Search History for: ${pin}`;
-            historyModalBody.innerHTML = '<p class="text-center text-gray-400">Loading...</p>';
+            historyModalBody.innerHTML = '<p>Loading...</p>';
             historyModal.classList.remove('hidden');
             
             const result = await apiRequest(`/admin/history?pin=${pin}`);
             if (result.success && result.history) {
                 if (result.history.length === 0) {
-                    historyModalBody.innerHTML = '<p class="text-center text-gray-400">No search history found.</p>';
+                    historyModalBody.innerHTML = '<p>No search history found.</p>';
                     return;
                 }
                 let tableHtml = `<table class="w-full text-left text-sm"><thead class="border-b border-gray-700"><tr><th class="p-2">Date/Time (UTC)</th><th class="p-2">Type</th><th class="p-2">Query</th><th class="p-2">Device ID</th></tr></thead><tbody>`;
@@ -527,7 +780,7 @@
                 });
                 historyModalBody.innerHTML = tableHtml + '</tbody></table>';
             } else {
-                historyModalBody.innerHTML = `<p class="text-center text-red-400">Error: ${result.error || 'Failed to load'}</p>`;
+                historyModalBody.innerHTML = `<p class="text-red-400">Error: ${result.error || 'Failed to load'}</p>`;
             }
         }
         function closeHistoryModal() { historyModal.classList.add('hidden'); }
@@ -536,20 +789,38 @@
         loginBtn.addEventListener('click', handleLogin);
         passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
         logoutBtn.addEventListener('click', handleLogout);
+        
+        // Dashboard triggers
+        document.getElementById('tab-dashboard').addEventListener('click', loadDashboardStats);
+
+        // Settings
         saveNoteBtn.addEventListener('click', handleSaveNote);
+        apiHealthCheckBtn.addEventListener('click', handleApiHealthCheck);
+        
+        // Key Modals
         addKeyBtn.addEventListener('click', () => openKeyModal('add'));
+        batchAddKeyBtn.addEventListener('click', openBatchKeyModal);
         modalCancelBtn.addEventListener('click', closeKeyModal);
         modalConfirmBtn.addEventListener('click', handleModalConfirm);
+        batchModalCancelBtn.addEventListener('click', closeBatchKeyModal);
+        batchModalConfirmBtn.addEventListener('click', handleBatchModalConfirm);
+        
+        // History Modal
         historyModalCloseBtn.addEventListener('click', closeHistoryModal);
+        
+        // User Search
+        userSearchBtn.addEventListener('click', () => loadUsers(userSearchInput.value));
+        userSearchClearBtn.addEventListener('click', () => {
+            userSearchInput.value = '';
+            loadUsers();
+        });
+        userSearchInput.addEventListener('keyup', (e) => e.key === 'Enter' && loadUsers(userSearchInput.value));
 
         // --- Initial Load ---
-        showLogin(); // Start at login, JS will check session
+        showLogin();
         apiRequest('/admin/keys').then(result => {
-             if (result.success) {
-                sessionStorage.setItem('isAdmin', 'true');
-                showDashboard();
-             }
-        }); // Check if already logged in
+             if (result.success) showDashboard();
+        });
     </script>
 </body>
 </html>
