@@ -6,6 +6,7 @@ import requests
 import pymongo
 import random
 import string
+import re  # Import regex module
 from pymongo.errors import DuplicateKeyError
 from requests.exceptions import JSONDecodeError, ConnectTimeout, ReadTimeout
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, abort
@@ -65,11 +66,11 @@ def get_db_collections():
         return
     try:
         if DB_CLIENT is None:
-            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV5") # Updated appName
+            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV5")
         db = DB_CLIENT.osint_db 
         KEYS_COLLECTION = db.keys 
         KEYS_COLLECTION.create_index("pin", unique=True)
-        KEYS_COLLECTION.create_index("linked_user_phone") # --- NEW: Index for account linking
+        KEYS_COLLECTION.create_index("linked_user_phone")
         SEARCH_HISTORY_COLLECTION = db.history
         SEARCH_HISTORY_COLLECTION.create_index([("pin", 1), ("timestamp", -1)])
         USERS_COLLECTION = db.users
@@ -210,9 +211,22 @@ def get_public_config():
 def search():
     if KEYS_COLLECTION is None: return jsonify({"error": "Database connection is not established."}), 500
     data = request.json or {}
-    lookup_type, number, pin, device_id = data.get('type'), data.get('number', '').strip(), data.get('pin'), data.get('deviceId')
+    lookup_type, pin, device_id = data.get('type'), data.get('pin'), data.get('deviceId')
+    
+    # --- UPDATED: Phone Number Cleaning ---
+    number_raw = data.get('number', '').strip()
+    # Remove all spaces and leading +91
+    number = re.sub(r'\s+', '', number_raw).lstrip('+91')
+    # --- END UPDATE ---
+    
     if not all([lookup_type, number, pin, device_id]):
         return jsonify({"error": "Missing required fields."}), 400
+
+    # --- UPDATED: Phone Number Validation ---
+    if lookup_type == "phone":
+        if not number.isdigit() or len(number) != 10:
+            return jsonify({"error": "Phone number must be exactly 10 digits."}), 400
+    # --- END UPDATE ---
 
     key = KEYS_COLLECTION.find_one({"pin": pin})
     if not key: return jsonify({"error": "Invalid API Key"}), 401
@@ -265,7 +279,7 @@ def search():
     return jsonify(final_response)
 
 # ----------------------------------------------------------------- #
-# --- NEW: User Account Routes ---
+# --- User Account Routes (Unchanged) ---
 # ----------------------------------------------------------------- #
 @app.route('/account')
 @user_login_required
@@ -277,7 +291,7 @@ def user_account():
     if KEYS_COLLECTION:
         key_info = KEYS_COLLECTION.find_one({"linked_user_phone": user_phone})
         if key_info:
-            key_info['_id'] = str(key_info['_id']) # Make it JSON serializable
+            key_info['_id'] = str(key_info['_id'])
             
     return render_template("account.html", user_name=user_name, user_phone=user_phone, key_info=key_info)
 
@@ -286,28 +300,17 @@ def user_account():
 def api_link_key():
     user_phone = session.get('user_phone')
     pin = (request.json or {}).get('pin')
-    if not pin:
-        return jsonify({"success": False, "error": "PIN is required."}), 400
-    if not KEYS_COLLECTION:
-        return jsonify({"success": False, "error": "Database error."}), 500
+    if not pin: return jsonify({"success": False, "error": "PIN is required."}), 400
+    if not KEYS_COLLECTION: return jsonify({"success": False, "error": "Database error."}), 500
         
     key = KEYS_COLLECTION.find_one({"pin": pin})
-    if not key:
-        return jsonify({"success": False, "error": "Invalid API Key."}), 404
+    if not key: return jsonify({"success": False, "error": "Invalid API Key."}), 404
     if key.get('linked_user_phone'):
         return jsonify({"success": False, "error": "This key is already linked to another account."}), 409
         
     try:
-        # Check if user already has a key, if so, unlink it
-        KEYS_COLLECTION.update_one(
-            {"linked_user_phone": user_phone},
-            {"$unset": {"linked_user_phone": ""}}
-        )
-        # Link the new key
-        KEYS_COLLECTION.update_one(
-            {"pin": pin},
-            {"$set": {"linked_user_phone": user_phone}}
-        )
+        KEYS_COLLECTION.update_one({"linked_user_phone": user_phone}, {"$unset": {"linked_user_phone": ""}})
+        KEYS_COLLECTION.update_one({"pin": pin}, {"$set": {"linked_user_phone": user_phone}})
         return jsonify({"success": True, "message": "Key linked successfully."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -316,15 +319,10 @@ def api_link_key():
 @user_login_required
 def api_unlink_key():
     user_phone = session.get('user_phone')
-    if not KEYS_COLLECTION:
-        return jsonify({"success": False, "error": "Database error."}), 500
+    if not KEYS_COLLECTION: return jsonify({"success": False, "error": "Database error."}), 500
     try:
-        result = KEYS_COLLECTION.update_one(
-            {"linked_user_phone": user_phone},
-            {"$unset": {"linked_user_phone": ""}}
-        )
-        if result.matched_count == 0:
-            return jsonify({"success": False, "error": "No key was linked to your account."}), 404
+        result = KEYS_COLLECTION.update_one({"linked_user_phone": user_phone}, {"$unset": {"linked_user_phone": ""}})
+        if result.matched_count == 0: return jsonify({"success": False, "error": "No key was linked."}), 404
         return jsonify({"success": True, "message": "Key unlinked successfully."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -334,20 +332,12 @@ def api_unlink_key():
 def api_remove_device():
     user_phone = session.get('user_phone')
     device_id = (request.json or {}).get('device_id')
-    if not device_id:
-        return jsonify({"success": False, "error": "Device ID is required."}), 400
-    if not KEYS_COLLECTION:
-        return jsonify({"success": False, "error": "Database error."}), 500
-        
+    if not device_id: return jsonify({"success": False, "error": "Device ID is required."}), 400
+    if not KEYS_COLLECTION: return jsonify({"success": False, "error": "Database error."}), 500
     try:
-        result = KEYS_COLLECTION.update_one(
-            {"linked_user_phone": user_phone},
-            {"$pull": {"device_ids": device_id}}
-        )
-        if result.matched_count == 0:
-            return jsonify({"success": False, "error": "Could not find your linked key."}), 404
-        if result.modified_count == 0:
-            return jsonify({"success": False, "error": "Device not found on this key."}), 404
+        result = KEYS_COLLECTION.update_one({"linked_user_phone": user_phone}, {"$pull": {"device_ids": device_id}})
+        if result.matched_count == 0: return jsonify({"success": False, "error": "Could not find your linked key."}), 404
+        if result.modified_count == 0: return jsonify({"success": False, "error": "Device not found."}), 404
         return jsonify({"success": True, "message": "Device removed."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -362,32 +352,15 @@ def api_change_pin():
         return jsonify({"success": False, "error": "New PIN must be at least 4 characters."}), 400
     if not KEYS_COLLECTION or not SEARCH_HISTORY_COLLECTION:
         return jsonify({"success": False, "error": "Database error."}), 500
-        
-    # Check if new PIN already exists
     try:
-        existing = KEYS_COLLECTION.find_one({"pin": new_pin})
-        if existing:
-            return jsonify({"success": False, "error": "This PIN is already in use. Please choose another."}), 409
-            
-        # Find user's current key
+        if KEYS_COLLECTION.find_one({"pin": new_pin}):
+            return jsonify({"success": False, "error": "This PIN is already in use."}), 409
         current_key = KEYS_COLLECTION.find_one({"linked_user_phone": user_phone})
         if not current_key:
-            return jsonify({"success": False, "error": "You do not have a key linked to your account."}), 404
-            
+            return jsonify({"success": False, "error": "You do not have a key linked."}), 404
         old_pin = current_key['pin']
-        
-        # Update the key
-        KEYS_COLLECTION.update_one(
-            {"_id": current_key['_id']},
-            {"$set": {"pin": new_pin}}
-        )
-        
-        # Update search history
-        SEARCH_HISTORY_COLLECTION.update_many(
-            {"pin": old_pin},
-            {"$set": {"pin": new_pin}}
-        )
-        
+        KEYS_COLLECTION.update_one({"_id": current_key['_id']}, {"$set": {"pin": new_pin}})
+        SEARCH_HISTORY_COLLECTION.update_many({"pin": old_pin}, {"$set": {"pin": new_pin}})
         return jsonify({"success": True, "message": "Your PIN has been updated."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -477,6 +450,7 @@ if ENABLE_ADMIN_PANEL:
                 results.append({"name": api["name"], "status": "OK", "message": "Success"})
         return jsonify({"success": True, "results": results})
 
+    # --- UPDATED: /admin/keys to fix server crash ---
     @app.route('/admin/keys', methods=['GET'])
     @admin_required
     def admin_get_keys():
@@ -484,20 +458,28 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": False, "error": "Database not configured."}), 500
         try:
             keys_rows = [make_serializable(k) for k in KEYS_COLLECTION.find().sort("created_at", -1)]
-            # --- NEW: Populate user info ---
+            
+            # --- BUG FIX: Build user cache safely ---
+            user_phones = [k.get('linked_user_phone') for k in keys_rows if k.get('linked_user_phone')]
             user_cache = {}
+            if user_phones:
+                # Fetch all linked users in one query
+                linked_users = USERS_COLLECTION.find({"phone": {"$in": user_phones}}, {"name": 1, "phone": 1})
+                user_cache = {u['phone']: u.get('name', 'N/A') for u in linked_users}
+
             for row in keys_rows:
                 row['id'] = row['pin']
                 user_phone = row.get('linked_user_phone')
                 if user_phone:
-                    if user_phone not in user_cache:
-                        user = USERS_COLLECTION.find_one({"phone": user_phone}, {"name": 1})
-                        user_cache[user_phone] = user['name'] if user else 'N/A'
-                    row['linked_user_name'] = user_cache[user_phone]
-            # --- End of new code ---
+                    # Safely get from cache, default to 'N/A' if user was deleted
+                    row['linked_user_name'] = user_cache.get(user_phone, 'N/A')
+            # --- End of bug fix ---
+            
             return jsonify({"success": True, "keys": keys_rows})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"Error in /admin/keys: {e}") # Log the error
+            return jsonify({"success": False, "error": f"An internal error occurred: {e}"}), 500
+    # --- END OF UPDATE ---
 
     @app.route('/admin/add', methods=['POST'])
     @admin_required
