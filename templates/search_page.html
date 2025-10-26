@@ -12,11 +12,22 @@
         .glass-card { background: rgba(22, 27, 34, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); }
         .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* --- UPDATED CSS --- */
+        
+        /* --- CSS FIX 1 (UI Overflow) --- */
         .result-key { color: #8b949e; width: 160px; display: inline-block; font-weight: 500; text-transform: capitalize; vertical-align: top; flex-shrink: 0; }
-        .result-value { display: inline-block; width: calc(100% - 165px); word-wrap: break-word; white-space: pre-wrap; flex-grow: 1; }
+        .result-value { 
+            display: inline-block; 
+            width: calc(100% - 165px); /* Original */
+            word-wrap: break-word;      /* Original */
+            white-space: pre-wrap;      /* Original */
+            flex-grow: 1;               /* Original */
+            
+            /* --- NEW: Force breaking long words --- */
+            overflow-wrap: break-word;
+            word-break: break-all; 
+        }
         .result-pair { display: flex; flex-wrap: nowrap; align-items: flex-start; }
-        /* --- END UPDATED CSS --- */
+        /* --- END CSS FIX --- */
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -63,7 +74,6 @@
     <script>
         const SERVICE_TYPE = '{{ service_type }}';
         
-        // --- All JavaScript logic ---
         const numberInput = document.getElementById('numberInput');
         const pinInput = document.getElementById('pinInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -101,7 +111,6 @@
             }
         }
 
-        // --- UPDATED: performSearch function (More robust error handling) ---
         async function performSearch() {
             let number = numberInput.value.trim();
             if (SERVICE_TYPE === 'phone') {
@@ -127,7 +136,7 @@
             }
 
             setLoading(true);
-            let responseText = ''; // For debugging
+            let responseText = ''; 
 
             try {
                 const response = await fetch('/api/search', {
@@ -136,8 +145,8 @@
                     body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId })
                 });
 
-                responseText = await response.text(); // Get text first
-                const result = JSON.parse(responseText); // Then try to parse
+                responseText = await response.text();
+                const result = JSON.parse(responseText); 
                 
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
                 
@@ -149,10 +158,10 @@
                 displayResults(result);
             } catch (error) {
                 console.error("Search Error:", error);
-                console.error("Server Response Text:", responseText); // Log the bad response
+                console.error("Server Response Text:", responseText); 
                 
                 let errorMsg = error.message || "An unexpected error occurred.";
-                if (error instanceof SyntaxError) { // Better error for "Unexpected token"
+                if (error instanceof SyntaxError) { 
                     errorMsg = "Failed to read server response. Please try again.";
                     if (responseText.includes("502")) errorMsg = "Server error (502 Bad Gateway). A data source might be down.";
                     else if (responseText.includes("504")) errorMsg = "Server error (504 Gateway Timeout). Request took too long.";
@@ -162,7 +171,6 @@
                 setLoading(false);
             }
         }
-        // --- END OF UPDATED FUNCTION ---
         
         function handleSearchAgain() {
             resultContainer.innerHTML = '';
@@ -182,7 +190,6 @@
             '@MrHazex'
         ];
 
-        // --- NEW: Helper function to check for empty/junk data ---
         function isDataEmpty(data) {
             if (typeof data !== 'object' || data === null || Array.isArray(data)) {
                 return true;
@@ -192,10 +199,10 @@
                 let valueString = String(value).toLowerCase();
                 let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
                 if (!junkKeys.includes(key.toLowerCase()) && !isJunkValue && value !== null && value !== undefined && value !== 'NA' && value !== 'Not Available' && value !== '') {
-                    return false; // Found a valid key
+                    return false; 
                 }
             }
-            return true; // No valid keys found
+            return true; 
         }
         
         const prettyKey = (key) => {
@@ -203,7 +210,6 @@
             return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
         };
 
-        // --- UPDATED: renderObject function (Cleans data) ---
         function renderObject(data) {
             let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
             const allKeys = Object.keys(data);
@@ -226,12 +232,11 @@
                 } else if (Array.isArray(value)) {
                     valueHtml = `<div class="pl-4">${value.map(item => typeof item === 'object' ? renderObject(item) : `<span class="block">${item}</span>`).join('')}</div>`;
                 } else {
-                    // UPDATED: Clean display value
                     let displayValue = (value || '').toString()
-                        .replace(/!/g, ', ')        // Replace ! with comma
-                        .replace(/\s*,\s*/g, ', ')  // Normalize commas
-                        .replace(/^,\s*/, '')       // Remove leading comma
-                        .trim();                    // Trim whitespace
+                        .replace(/!/g, ', ')        
+                        .replace(/\s*,\s*/g, ', ')  
+                        .replace(/^,\s*/, '')       
+                        .trim();                    
                     let valueClass = (priorityKeys.includes(key)) ? 'text-cyan-400 font-bold' : '';
                     valueHtml = `<span class="result-value ${valueClass}">${displayValue}</span>`;
                 }
@@ -241,7 +246,7 @@
             return html;
         }
 
-        // --- UPDATED: displayResults function (Checks for empty data) ---
+        // --- UPDATED displayResults (FIX 2 & 3) ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -250,7 +255,7 @@
             }
             const allKeys = Object.keys(result);
             const dataKeys = allKeys.filter(k => !['status', 'key_status', 'dev'].includes(k));
-            if (dataKeys.length === 0 && isDataEmpty(result)) { // Modified check
+            if (dataKeys.length === 0 && isDataEmpty(result)) {
                  displayError('No data found for this query.');
                  return;
             }
@@ -258,6 +263,30 @@
             let htmlContent = '';
             let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
             const resultId = 'result-text-0';
+            
+            // --- FIX 3: Helper to sanitize error messages ---
+            const sanitizeError = (errorMsg) => {
+                let msg = String(errorMsg);
+                if (msg.toLowerCase().includes('http') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
+                    return 'Data source is unavailable or timed out.';
+                }
+                return msg;
+            };
+
+            // --- FIX 2: Helper to get plain text from objects/strings for copying ---
+            const getPlainTextValue = (v) => {
+                if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                    // Convert simple object to "key: val, key2: val2"
+                    return Object.entries(v)
+                        .map(([objK, objV]) => `${prettyKey(objK)}: ${objV}`)
+                        .join(', ');
+                } else if (Array.isArray(v)) {
+                    // Convert array to "item1, item2"
+                    return v.join(', ');
+                }
+                // Convert string/number
+                return String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+            };
             
             if (SERVICE_TYPE === 'phone' || SERVICE_TYPE === 'vehicle') {
                 dataKeys.forEach((key, index) => {
@@ -268,9 +297,10 @@
                     htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4"><div class="p-3 border-b border-gray-700"><span class="${titleColor} font-semibold">${title}</span></div><div class="p-4 space-y-2 text-sm text-gray-200">`;
                     
                     if (item.error) {
-                        htmlContent += `<div class="text-red-300">${item.error}</div>`;
-                        plainTextContent += `\n--- ${title} ---\nError: ${item.error}\n`;
-                    } else if (isDataEmpty(item)) { // --- NEW CHECK ---
+                        const cleanError = sanitizeError(item.error); // <-- Applied FIX 3
+                        htmlContent += `<div class="text-red-300">${cleanError}</div>`;
+                        plainTextContent += `\n--- ${title} ---\nError: ${cleanError}\n`;
+                    } else if (isDataEmpty(item)) {
                         htmlContent += `<div class="text-gray-400">No information found from this source.</div>`;
                         plainTextContent += `\n--- ${title} ---\nNo information found.\n`;
                     } else {
@@ -279,9 +309,8 @@
                         Object.entries(item).forEach(([k, v]) => {
                             let vString = String(v).toLowerCase(); 
                             let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                            // UPDATED: Added junkKeys check and cleanValue
                             if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
-                                let cleanValue = String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+                                let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
                                 plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
                             }
                         });
@@ -291,10 +320,11 @@
             } else {
                 htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">`;
                 if (result.error) {
+                    const cleanError = sanitizeError(result.error); // <-- Applied FIX 3
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-red-400 font-semibold">Result (Error)</span></div>`;
-                    htmlContent += `<div class="p-4 text-red-300">${result.error}</div>`;
+                    htmlContent += `<div class="p-4 text-red-300">${cleanError}</div>`;
                     plainTextContent += `--- Result (Error) ---\nError: ${result.error}\n`;
-                } else if (isDataEmpty(result)) { // --- NEW CHECK ---
+                } else if (isDataEmpty(result)) { 
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
                     htmlContent += `<div class="p-4 text-gray-400">No information found.</div>`;
                     plainTextContent += `--- Result ---\nNo information found.\n`;
@@ -306,9 +336,8 @@
                     Object.entries(result).forEach(([k, v]) => {
                         let vString = String(v).toLowerCase(); 
                         let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                        // UPDATED: Added junkKeys check and cleanValue
                         if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
-                            let cleanValue = String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+                            let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
                             plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
                         }
                     });
@@ -333,9 +362,15 @@
             });
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
+        // --- END UPDATED FUNCTION ---
 
         function displayError(msg) {
-            resultContainer.innerHTML = `<div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center"><i class="fas fa-exclamation-triangle mr-2"></i>${msg}</div><button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
+            // Also sanitize errors displayed here
+            let cleanMsg = String(msg);
+            if (cleanMsg.toLowerCase().includes('http') || cleanMsg.toLowerCase().includes('network')) {
+                cleanMsg = 'An error occurred. Please try again.';
+            }
+            resultContainer.innerHTML = `<div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center"><i class="fas fa-exclamation-triangle mr-2"></i>${cleanMsg}</div><button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
         }
 
