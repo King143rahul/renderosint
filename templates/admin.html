@@ -373,7 +373,8 @@
         async function apiRequest(endpoint, options = {}) {
             try {
                 const response = await fetch(window.location.origin + endpoint, options);
-                if (response.status === 401) {
+                // --- FIX: Only redirect if Unauthorized AND it's not the initial check ---
+                if (response.status === 401 && endpoint !== '/admin/keys') {
                     showLogin();
                     return { success: false, error: 'Session expired. Please login again.' };
                 }
@@ -395,7 +396,7 @@
                 body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
             });
             setLoading(loginBtn, false, 'Login');
-            if (result.success) showDashboard();
+            if (result.success) showDashboard(); // --- FIX: Call showDashboard() on successful login
             else loginError.textContent = result.error || 'Login failed.';
         }
 
@@ -425,7 +426,7 @@
             if (result.success) {
                 allKeysData = result.keys || [];
                 renderKeys(allKeysData);
-            } else if (result.error) {
+            } else if (result.error && result.error !== 'Unauthorized') { // Don't alert for initial unauthorized
                 alert('Failed to load keys: ' + result.error);
             }
         }
@@ -441,49 +442,33 @@
             if (result.success) globalNoteText.value = result.note || '';
         }
 
-        // --- UPDATED: renderKeys function ---
         function renderKeys(keys) {
             keysTableBody.innerHTML = '';
             if (!keys || keys.length === 0) {
-                keysTableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-500">No API keys found.</td></tr>'; // Increased colspan
+                keysTableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-500">No API keys found.</td></tr>';
                 return;
             }
             keys.forEach(key => {
                 const expiry = key.expiry ? new Date(key.expiry).toISOString().split('T')[0] : 'Never';
                 const isExpired = key.expiry && new Date(expiry) < new Date(today);
-                
                 let perms = [];
-                if (key.allow_phone) perms.push('Ph');
-                if (key.allow_vehicle) perms.push('Veh');
-                if (key.allow_aadhaar) perms.push('Aad');
-                if (key.allow_family) perms.push('Fam');
-                if (key.allow_insta) perms.push('Insta');
+                if (key.allow_phone) perms.push('Ph'); if (key.allow_vehicle) perms.push('Veh'); if (key.allow_aadhaar) perms.push('Aad');
+                if (key.allow_family) perms.push('Fam'); if (key.allow_insta) perms.push('Insta');
                 let permDisplay = perms.length === 5 ? '<span class="font-bold text-green-500">All</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
-
-                const deviceCount = (key.device_ids || []).length;
-                const deviceLimit = key.device_limit || 1;
-                const deviceLock = `${deviceCount} / ${deviceLimit}`;
-                
-                // --- NEW: User Info Display ---
-                const userName = key.linked_user_name || '<span class="text-gray-500">N/A</span>';
-                const userPhone = key.linked_user_phone || '<span class="text-gray-500">N/A</span>';
-
+                const deviceCount = (key.device_ids || []).length; const deviceLimit = key.device_limit || 1; const deviceLock = `${deviceCount} / ${deviceLimit}`;
+                const userName = key.linked_user_name || '<span class="text-gray-500">N/A</span>'; const userPhone = key.linked_user_phone || '<span class="text-gray-500">N/A</span>';
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="p-3 font-mono text-cyan-400 pin-link" data-pin="${key.pin}">${key.pin}</td>
-                    <td class="p-3 text-sm">${userName}</td>
-                    <td class="p-3 text-sm font-mono">${userPhone}</td>
-                    <td class="p-3">${key.used_today || 0} / ${key.limit_count || 10}</td>
-                    <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiry}</td>
-                    <td class="p-3 text-xs">${permDisplay}</td>
-                    <td class="p-3 text-sm ${deviceCount >= deviceLimit ? 'text-yellow-500' : ''}">${deviceLock}</td>
+                    <td class="p-3 text-sm">${userName}</td> <td class="p-3 text-sm font-mono">${userPhone}</td>
+                    <td class="p-3">${key.used_today || 0} / ${key.limit_count || 10}</td> <td class="p-3 ${isExpired ? 'text-red-500' : ''}">${expiry}</td>
+                    <td class="p-3 text-xs">${permDisplay}</td> <td class="p-3 text-sm ${deviceCount >= deviceLimit ? 'text-yellow-500' : ''}">${deviceLock}</td>
                     <td class="p-3 text-right whitespace-nowrap">
                         <button class="edit-btn px-2 py-1 bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Edit"><i class="fas fa-pencil-alt"></i></button>
                         <button class="reset-usage-btn px-2 py-1 bg-green-800 hover:bg-green-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Usage"><i class="fas fa-sync-alt"></i></button>
                         <button class="reset-device-btn px-2 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Devices"><i class="fas fa-key"></i></button>
                         <button class="delete-btn px-2 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
+                    </td>`;
                 keysTableBody.appendChild(row);
             });
             attachTableListeners();
@@ -499,34 +484,23 @@
                 const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString('en-GB', { timeZone: 'UTC' }) : 'N/A';
                 const isBanned = user.is_banned || false;
                 const banBtnClass = isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
-                const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban';
-                const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
-                
+                const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban'; const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="p-3">${user.name}</td>
-                    <td class="p-3 font-mono">${user.phone}</td>
+                    <td class="p-3">${user.name}</td> <td class="p-3 font-mono">${user.phone}</td>
                     <td class="p-3 ${isBanned ? 'text-red-500' : 'text-green-500'}">${isBanned ? 'Banned' : 'Active'}</td>
                     <td class="p-3 text-sm">${lastLogin}</td>
                     <td class="p-3 text-right">
-                        <button class="ban-user-btn px-3 py-1 ${banBtnClass} text-white text-xs font-bold rounded-full" data-phone="${user.phone}" data-banned="${isBanned}" title="${banBtnTitle}">
-                            <i class="fas ${banBtnIcon}"></i>
-                        </button>
-                    </td>
-                `;
+                        <button class="ban-user-btn px-3 py-1 ${banBtnClass} text-white text-xs font-bold rounded-full" data-phone="${user.phone}" data-banned="${isBanned}" title="${banBtnTitle}"><i class="fas ${banBtnIcon}"></i></button>
+                    </td>`;
                 usersTableBody.appendChild(row);
             });
             attachUserTableListeners();
         }
 
         async function handleSaveNote() {
-            setLoading(saveNoteBtn, true, 'Save Note');
-            noteSaveStatus.textContent = '';
-            const result = await apiRequest('/admin/note', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ note: globalNoteText.value })
-            });
+            setLoading(saveNoteBtn, true, 'Save Note'); noteSaveStatus.textContent = '';
+            const result = await apiRequest('/admin/note', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: globalNoteText.value }) });
             setLoading(saveNoteBtn, false, 'Save Note');
             noteSaveStatus.textContent = result.success ? 'Note saved!' : `Error: ${result.error}`;
             noteSaveStatus.className = result.success ? 'text-green-400' : 'text-red-400';
@@ -534,8 +508,7 @@
         }
 
         async function handleApiHealthCheck() {
-            setLoading(apiHealthCheckBtn, true, 'Checking...');
-            apiHealthResults.innerHTML = '<p>Running checks...</p>';
+            setLoading(apiHealthCheckBtn, true, 'Checking...'); apiHealthResults.innerHTML = '<p>Running checks...</p>';
             const result = await apiRequest('/admin/api_health');
             setLoading(apiHealthCheckBtn, false, 'Run API Health Check');
             if (result.success) {
@@ -543,9 +516,7 @@
                     const statusClass = res.status === 'OK' ? 'text-green-500' : (res.status === 'Failed' ? 'text-red-500' : 'text-yellow-500');
                     return `<div class="text-sm p-2 border-b border-gray-700"><span class_="${statusClass} font-bold">${res.status}</span> - ${res.name}<p class="text-xs text-gray-400 pl-4">${res.message}</p></div>`;
                 }).join('');
-            } else {
-                apiHealthResults.innerHTML = `<p class="text-red-500">Error: ${result.error}</p>`;
-            }
+            } else { apiHealthResults.innerHTML = `<p class="text-red-500">Error: ${result.error}</p>`; }
         }
 
         function attachTableListeners() {
@@ -559,22 +530,19 @@
         async function handleDeleteKey(button) {
             const id = button.dataset.id; if (!confirm(`Delete key: ${id}?`)) return; setLoading(button, true);
             const result = await apiRequest('/admin/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-            if (result.success) await loadKeys();
-            else { alert('Delete error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-trash"></i>'); }
+            if (result.success) await loadKeys(); else { alert('Delete error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-trash"></i>'); }
         }
         
         async function handleResetDevice(button) {
             const id = button.dataset.id; if (!confirm(`Reset all devices for key: ${id}?`)) return; setLoading(button, true);
             const result = await apiRequest('/admin/reset_device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-            if (result.success) await loadKeys();
-            else { alert('Reset error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-key"></i>'); }
+            if (result.success) await loadKeys(); else { alert('Reset error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-key"></i>'); }
         }
         
         async function handleResetUsage(button) {
             const id = button.dataset.id; if (!confirm(`Reset daily usage for key: ${id}?`)) return; setLoading(button, true);
             const result = await apiRequest('/admin/reset_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-            if (result.success) await loadKeys();
-            else { alert('Reset error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-sync-alt"></i>'); }
+            if (result.success) await loadKeys(); else { alert('Reset error: ' + (result.error || 'unknown')); setLoading(button, false, '<i class="fas fa-sync-alt"></i>'); }
         }
 
         function attachUserTableListeners() {
@@ -639,10 +607,7 @@
             if (!count || count <= 0 || count > 100) { batchModalError.textContent = 'Count must be between 1 and 100.'; return; }
             setLoading(batchModalConfirmBtn, true, 'Generating...');
             let permissions = []; batchPermCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
-            const payload = {
-                count: count, prefix: batchKeyPrefix.value.trim(), limit: parseInt(batchKeyLimit.value || '10', 10),
-                device_limit: parseInt(batchKeyDeviceLimit.value || '1', 10), expiry: batchKeyExpiry.value || null, permissions: permissions
-            };
+            const payload = { count, prefix: batchKeyPrefix.value.trim(), limit: parseInt(batchKeyLimit.value || '10', 10), device_limit: parseInt(batchKeyDeviceLimit.value || '1', 10), expiry: batchKeyExpiry.value || null, permissions };
             const result = await apiRequest('/admin/batch_add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (result.success) { await loadKeys(); closeBatchKeyModal(); alert(result.message || 'Batch job complete.'); }
             else { batchModalError.textContent = result.error || 'Failed to generate keys.'; }
@@ -682,8 +647,9 @@
         userSearchClearBtn.addEventListener('click', () => { userSearchInput.value = ''; loadUsers(); });
         userSearchInput.addEventListener('keyup', (e) => e.key === 'Enter' && loadUsers(userSearchInput.value));
 
+        // --- FIX: Remove initial data load check ---
         showLogin();
-        apiRequest('/admin/keys').then(result => { if (result.success) showDashboard(); });
+        // The apiRequest('/admin/keys') check is removed. Login button now handles showing the dashboard.
     </script>
 </body>
 </html>
