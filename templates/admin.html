@@ -274,35 +274,52 @@
     </div>
 
     <script>
+        // Global state
         let allKeysData = [];
         let currentModalMode = 'add';
+
+        // Views
         const loginView = document.getElementById('login-view');
         const dashboardView = document.getElementById('dashboard-view');
+        
+        // Login
         const loginBtn = document.getElementById('loginBtn');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginError = document.getElementById('login-error');
+        
+        // Dashboard
         const logoutBtn = document.getElementById('logoutBtn');
         const addKeyBtn = document.getElementById('add-key-btn');
         const batchAddKeyBtn = document.getElementById('batch-add-key-btn');
         const keysTableBody = document.getElementById('keys-table-body');
         const usersTableBody = document.getElementById('users-table-body');
+
+        // Dashboard Stats
         const statTotalSearches = document.getElementById('stat-total-searches');
         const statActiveKeys = document.getElementById('stat-active-keys');
         const statTotalUsers = document.getElementById('stat-total-users');
         const statPopularService = document.getElementById('stat-popular-service');
         const tableTopKeys = document.getElementById('table-top-keys');
         const tableRecentSearches = document.getElementById('table-recent-searches');
+
+        // Tabs
         const tabButtons = document.querySelectorAll('.tab-btn');
         const tabPanels = document.querySelectorAll('.tab-panel');
+
+        // Users Panel
         const userSearchInput = document.getElementById('user-search-input');
         const userSearchBtn = document.getElementById('user-search-btn');
         const userSearchClearBtn = document.getElementById('user-search-clear-btn');
+
+        // Settings Panel
         const globalNoteText = document.getElementById('global-note-text');
         const saveNoteBtn = document.getElementById('save-note-btn');
         const noteSaveStatus = document.getElementById('note-save-status');
         const apiHealthCheckBtn = document.getElementById('api-health-check-btn');
         const apiHealthResults = document.getElementById('api-health-results');
+
+        // Add/Edit Key Modal
         const keyModal = document.getElementById('key-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -314,6 +331,8 @@
         const modalKeyExpiry = document.getElementById('modal-key-expiry');
         const modalError = document.getElementById('modal-error');
         const permCheckboxes = document.querySelectorAll('.perm-check');
+        
+        // Batch Key Modal
         const batchKeyModal = document.getElementById('batch-key-modal');
         const batchModalConfirmBtn = document.getElementById('batch-modal-confirm-btn');
         const batchModalCancelBtn = document.getElementById('batch-modal-cancel-btn');
@@ -324,72 +343,161 @@
         const batchKeyExpiry = document.getElementById('batch-key-expiry');
         const batchPermCheckboxes = document.querySelectorAll('.batch-perm-check');
         const batchModalError = document.getElementById('batch-modal-error');
+
+        // History Modal
         const historyModal = document.getElementById('history-modal');
         const historyModalTitle = document.getElementById('history-modal-title');
         const historyModalBody = document.getElementById('history-modal-body');
         const historyModalCloseBtn = document.getElementById('history-modal-close-btn');
 
-        function setLoading(button, isLoading, originalText = null) { /* ... unchanged ... */ }
+        // --- Utility ---
+        function setLoading(button, isLoading, originalText = null) {
+            if (!button) return;
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                button.disabled = false;
+                button.innerHTML = originalText || button.dataset.originalText || 'Submit';
+            }
+        }
+        
         const today = new Date().toISOString().split('T')[0];
-        modalKeyExpiry.setAttribute('min', today); batchKeyExpiry.setAttribute('min', today);
+        modalKeyExpiry.setAttribute('min', today);
+        batchKeyExpiry.setAttribute('min', today);
 
+        // --- View Management ---
         function showLogin() {
-            loginView.classList.remove('hidden'); dashboardView.classList.add('hidden');
-        }
-        function showDashboard() { // --- THIS IS NOW CALLED ONLY AFTER SUCCESSFUL LOGIN ---
-            loginView.classList.add('hidden'); dashboardView.classList.remove('hidden');
-            loadDashboardStats(); loadKeys(); loadUsers(); loadSettings();
+            loginView.classList.remove('hidden');
+            dashboardView.classList.add('hidden');
         }
 
-        tabButtons.forEach(button => { button.addEventListener('click', () => { /* ... unchanged ... */ }); });
+        function showDashboard() {
+            loginView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            loadDashboardStats();
+            loadKeys();
+            loadUsers();
+            loadSettings();
+        }
 
+        // --- Tab Switching ---
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanels.forEach(panel => panel.classList.add('hidden'));
+                button.classList.add('active');
+                document.getElementById(button.dataset.target).classList.remove('hidden');
+            });
+        });
+
+        // --- API Call Functions ---
         async function apiRequest(endpoint, options = {}) {
-             // --- No changes needed here, the previous fix was correct ---
             try {
                 const response = await fetch(window.location.origin + endpoint, options);
-                if (response.status === 401 && endpoint !== '/admin/login' && options.method !== 'GET') { // Don't redirect on initial GET check
-                    showLogin(); return { success: false, error: 'Session expired.' };
+                if (response.status === 401) {
+                    showLogin();
+                    return { success: false, error: 'Session expired. Please login again.' };
                 }
                 const result = await response.json();
-                if (!result.success && result.error) console.error(`API Error ${endpoint}:`, result.error);
+                if (!result.success && result.error) console.error(`API Error at ${endpoint}:`, result.error);
                 return result;
             } catch (err) {
-                console.error(`Network Error ${endpoint}:`, err);
-                return { success: false, error: 'Network error.' };
+                console.error(`Network Error at ${endpoint}:`, err);
+                return { success: false, error: 'Network error, please try again.' };
             }
         }
 
+        // --- Login/Logout ---
         async function handleLogin() {
-            loginError.textContent = ''; setLoading(loginBtn, true, 'Login');
+            loginError.textContent = '';
+            setLoading(loginBtn, true, 'Login');
             const result = await apiRequest('/admin/login', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
             });
             setLoading(loginBtn, false, 'Login');
-            if (result.success) showDashboard(); // Call showDashboard ONLY on success
+            if (result.success) showDashboard();
             else loginError.textContent = result.error || 'Login failed.';
         }
-        async function handleLogout() { /* ... unchanged ... */ }
-        async function loadDashboardStats() { /* ... unchanged ... */ }
-        async function loadKeys() { /* ... unchanged ... */ }
-        async function loadUsers(searchQuery = '') { /* ... unchanged ... */ }
-        async function loadSettings() { /* ... unchanged ... */ }
 
-        // --- UPDATED: renderKeys to remove user columns ---
+        async function handleLogout() {
+            await apiRequest('/admin/logout', { method: 'POST' });
+            allKeysData = [];
+            showLogin();
+        }
+
+        // --- Data Loading ---
+        async function loadDashboardStats() {
+            const result = await apiRequest('/admin/dashboard_stats');
+            if (!result.success) return;
+            const stats = result.stats;
+            
+            statTotalSearches.textContent = stats.total_searches_today;
+            statActiveKeys.textContent = stats.active_keys;
+            statTotalUsers.textContent = stats.total_users;
+            statPopularService.textContent = stats.popular_services.length > 0 ? stats.popular_services[0]._id : 'N/A';
+            
+            tableTopKeys.innerHTML = stats.top_5_keys.map(k => `
+                <tr class="border-b border-gray-800"><td class="p-2 font-mono text-cyan-400">${k.pin}</td><td class="p-2">${k.used_today}</td></tr>
+            `).join('');
+            
+            tableRecentSearches.innerHTML = stats.recent_searches.map(s => {
+                const time = new Date(s.timestamp).toLocaleTimeString();
+                return `<tr class="border-b border-gray-800 text-sm">
+                    <td class="p-2 text-gray-400">${time}</td>
+                    <td class="p-2 font-mono text-cyan-400">${s.pin.substring(0, 10)}...</td>
+                    <td class="p-2">${s.lookup_type}</td>
+                    <td class="p-2 font-mono">${s.query.substring(0, 15)}...</td>
+                </tr>`
+            }).join('');
+        }
+
+        async function loadKeys() {
+            const result = await apiRequest('/admin/keys');
+            if (result.success) {
+                allKeysData = result.keys || [];
+                renderKeys(allKeysData);
+            } else if (result.error) {
+                alert('Failed to load keys: ' + result.error);
+            }
+        }
+        
+        async function loadUsers(searchQuery = '') {
+            const result = await apiRequest(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
+            if (result.success) renderUsers(result.users || []);
+            else alert('Failed to load users: ' + (result.error || 'Unknown error'));
+        }
+        
+        async function loadSettings() {
+            const result = await apiRequest('/admin/note'); // GET
+            if (result.success) globalNoteText.value = result.note || '';
+        }
+
+        // --- Data Rendering ---
         function renderKeys(keys) {
             keysTableBody.innerHTML = '';
             if (!keys || keys.length === 0) {
-                keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found.</td></tr>'; // Reduced colspan
+                keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found.</td></tr>';
                 return;
             }
             keys.forEach(key => {
                 const expiry = key.expiry ? new Date(key.expiry).toISOString().split('T')[0] : 'Never';
                 const isExpired = key.expiry && new Date(expiry) < new Date(today);
+                
                 let perms = [];
-                if (key.allow_phone) perms.push('Ph'); if (key.allow_vehicle) perms.push('Veh'); if (key.allow_aadhaar) perms.push('Aad');
-                if (key.allow_family) perms.push('Fam'); if (key.allow_insta) perms.push('Insta');
+                if (key.allow_phone) perms.push('Ph');
+                if (key.allow_vehicle) perms.push('Veh');
+                if (key.allow_aadhaar) perms.push('Aad');
+                if (key.allow_family) perms.push('Fam');
+                if (key.allow_insta) perms.push('Insta');
                 let permDisplay = perms.length === 5 ? '<span class="font-bold text-green-500">All</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
-                const deviceCount = (key.device_ids || []).length; const deviceLimit = key.device_limit || 1; const deviceLock = `${deviceCount} / ${deviceLimit}`;
+
+                const deviceCount = (key.device_ids || []).length;
+                const deviceLimit = key.device_limit || 1;
+                const deviceLock = `${deviceCount} / ${deviceLimit}`;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -403,53 +511,316 @@
                         <button class="reset-usage-btn px-2 py-1 bg-green-800 hover:bg-green-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Usage"><i class="fas fa-sync-alt"></i></button>
                         <button class="reset-device-btn px-2 py-1 bg-yellow-800 hover:bg-yellow-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Reset Devices"><i class="fas fa-key"></i></button>
                         <button class="delete-btn px-2 py-1 bg-red-800 hover:bg-red-700 text-white text-xs font-bold rounded-full" data-id="${key.id}" title="Delete"><i class="fas fa-trash"></i></button>
-                    </td>`;
+                    </td>
+                `;
                 keysTableBody.appendChild(row);
             });
             attachTableListeners();
         }
-        // --- END UPDATE ---
+        
+        function renderUsers(users) {
+            usersTableBody.innerHTML = '';
+            if (!users || users.length === 0) {
+                usersTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No users found.</td></tr>';
+                return;
+            }
+            users.forEach(user => {
+                const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString('en-GB', { timeZone: 'UTC' }) : 'N/A';
+                const isBanned = user.is_banned || false;
+                const banBtnClass = isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+                const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban';
+                const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="p-3">${user.name}</td>
+                    <td class="p-3 font-mono">${user.phone}</td>
+                    <td class="p-3 ${isBanned ? 'text-red-500' : 'text-green-500'}">${isBanned ? 'Banned' : 'Active'}</td>
+                    <td class="p-3 text-sm">${lastLogin}</td>
+                    <td class="p-3 text-right">
+                        <button class="ban-user-btn px-3 py-1 ${banBtnClass} text-white text-xs font-bold rounded-full" data-phone="${user.phone}" data-banned="${isBanned}" title="${banBtnTitle}">
+                            <i class="fas ${banBtnIcon}"></i>
+                        </button>
+                    </td>
+                `;
+                usersTableBody.appendChild(row);
+            });
+            attachUserTableListeners();
+        }
 
-        function renderUsers(users) { /* ... unchanged ... */ }
-        async function handleSaveNote() { /* ... unchanged ... */ }
-        async function handleApiHealthCheck() { /* ... unchanged ... */ }
-        function attachTableListeners() { /* ... unchanged ... */ }
-        async function handleDeleteKey(button) { /* ... unchanged ... */ }
-        async function handleResetDevice(button) { /* ... unchanged ... */ }
-        async function handleResetUsage(button) { /* ... unchanged ... */ }
-        function attachUserTableListeners() { /* ... unchanged ... */ }
-        async function handleBanUser(button) { /* ... unchanged ... */ }
-        function openKeyModal(mode = 'add', pin = null) { /* ... unchanged ... */ }
-        function closeKeyModal() { /* ... unchanged ... */ }
-        async function handleModalConfirm() { /* ... unchanged ... */ }
-        function openBatchKeyModal() { /* ... unchanged ... */ }
-        function closeBatchKeyModal() { /* ... unchanged ... */ }
-        async function handleBatchModalConfirm() { /* ... unchanged ... */ }
-        async function showHistory(pin) { /* ... unchanged ... */ }
-        function closeHistoryModal() { /* ... unchanged ... */ }
+        // --- Settings Panel ---
+        async function handleSaveNote() {
+            setLoading(saveNoteBtn, true, 'Save Note');
+            noteSaveStatus.textContent = '';
+            const result = await apiRequest('/admin/note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: globalNoteText.value })
+            });
+            setLoading(saveNoteBtn, false, 'Save Note');
+            noteSaveStatus.textContent = result.success ? 'Note saved!' : `Error: ${result.error}`;
+            noteSaveStatus.className = result.success ? 'text-green-400' : 'text-red-400';
+            setTimeout(() => noteSaveStatus.textContent = '', 3000);
+        }
 
-        // --- Event Listeners ---
+        async function handleApiHealthCheck() {
+            setLoading(apiHealthCheckBtn, true, 'Checking...');
+            apiHealthResults.innerHTML = '<p>Running checks...</p>';
+            const result = await apiRequest('/admin/api_health');
+            setLoading(apiHealthCheckBtn, false, 'Run API Health Check');
+            if (result.success) {
+                apiHealthResults.innerHTML = result.results.map(res => {
+                    const statusClass = res.status === 'OK' ? 'text-green-500' : (res.status === 'Failed' ? 'text-red-500' : 'text-yellow-500');
+                    return `
+                        <div class="text-sm p-2 border-b border-gray-700">
+                            <span class_="${statusClass} font-bold">${res.status}</span> - ${res.name}
+                            <p class="text-xs text-gray-400 pl-4">${res.message}</p>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                apiHealthResults.innerHTML = `<p class="text-red-500">Error: ${result.error}</p>`;
+            }
+        }
+
+        // --- Table Listeners ---
+        function attachTableListeners() {
+            document.querySelectorAll('.pin-link').forEach(btn => btn.addEventListener('click', (e) => showHistory(e.currentTarget.dataset.pin)));
+            document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => openKeyModal('edit', e.currentTarget.dataset.id)));
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteKey(e.currentTarget)));
+            document.querySelectorAll('.reset-device-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetDevice(e.currentTarget)));
+            document.querySelectorAll('.reset-usage-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetUsage(e.currentTarget)));
+        }
+        
+        async function handleDeleteKey(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Delete key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Delete error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-trash"></i>');
+            }
+        }
+        
+        async function handleResetDevice(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset all devices for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-key"></i>');
+            }
+        }
+        
+        async function handleResetUsage(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset daily usage for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-sync-alt"></i>');
+            }
+        }
+
+        function attachUserTableListeners() {
+            document.querySelectorAll('.ban-user-btn').forEach(btn => btn.addEventListener('click', (e) => handleBanUser(e.currentTarget)));
+        }
+
+        async function handleBanUser(button) {
+            const phone = button.dataset.phone;
+            const isBanned = button.dataset.banned === 'true';
+            const action = isBanned ? 'unban' : 'ban';
+            if (!confirm(`Are you sure you want to ${action} user ${phone}?`)) return;
+            
+            setLoading(button, true);
+            const result = await apiRequest('/admin/ban_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone, ban_status: !isBanned })
+            });
+            if (result.success) await loadUsers(userSearchInput.value);
+            else {
+                alert(`Error: ${result.error || 'unknown'}`);
+                setLoading(button, false, isBanned ? '<i class="fas fa-check"></i>' : '<i class="fas fa-ban"></i>');
+            }
+        }
+
+        // --- Key Modal Logic (Add/Edit) ---
+        function openKeyModal(mode = 'add', pin = null) {
+            currentModalMode = mode;
+            modalError.textContent = '';
+            
+            if (mode === 'edit') {
+                const key = allKeysData.find(k => k.pin === pin);
+                if (!key) return;
+                modalTitle.textContent = 'Edit API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
+                modalKeyPin.value = key.pin;
+                modalKeyPin.disabled = true;
+                modalKeyPinHidden.value = key.pin;
+                modalKeyLimit.value = key.limit_count;
+                modalKeyDeviceLimit.value = key.device_limit || 1;
+                modalKeyExpiry.value = key.expiry ? key.expiry.split('T')[0] : '';
+                permCheckboxes.forEach(cb => cb.checked = key[`allow_${cb.value}`] == 1);
+            } else {
+                modalTitle.textContent = 'Add New API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Key';
+                modalKeyPin.value = '';
+                modalKeyPin.disabled = false;
+                modalKeyPinHidden.value = '';
+                modalKeyLimit.value = '10';
+                modalKeyDeviceLimit.value = '1';
+                modalKeyExpiry.value = '';
+                permCheckboxes.forEach(cb => cb.checked = true);
+            }
+            keyModal.classList.remove('hidden');
+        }
+
+        function closeKeyModal() { keyModal.classList.add('hidden'); }
+
+        async function handleModalConfirm() {
+            modalError.textContent = '';
+            setLoading(modalConfirmBtn, true);
+            
+            const pin = (currentModalMode === 'edit') ? modalKeyPinHidden.value : modalKeyPin.value.trim();
+            const limit = parseInt(modalKeyLimit.value || '10', 10);
+            const device_limit = parseInt(modalKeyDeviceLimit.value || '1', 10);
+            const expiry = modalKeyExpiry.value || null;
+            let permissions = [];
+            permCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
+
+            if (!pin) {
+                modalError.textContent = 'PIN cannot be empty.';
+                setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
+                return;
+            }
+            
+            const endpoint = (currentModalMode === 'edit') ? '/admin/update' : '/admin/add';
+            const payload = { pin, limit, expiry, permissions, device_limit };
+            
+            const result = await apiRequest(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (result.success) {
+                await loadKeys();
+                closeKeyModal();
+            } else {
+                modalError.textContent = result.error || 'Failed to save key.';
+            }
+            setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
+        }
+        
+        // --- Batch Key Modal Logic ---
+        function openBatchKeyModal() {
+            batchModalError.textContent = '';
+            batchKeyCount.value = '10';
+            batchKeyPrefix.value = '';
+            batchKeyLimit.value = '10';
+            batchKeyDeviceLimit.value = '1';
+            batchKeyExpiry.value = '';
+            batchPermCheckboxes.forEach(cb => cb.checked = true);
+            batchKeyModal.classList.remove('hidden');
+        }
+        
+        function closeBatchKeyModal() { batchKeyModal.classList.add('hidden'); }
+        
+        async function handleBatchModalConfirm() {
+            batchModalError.textContent = '';
+            const count = parseInt(batchKeyCount.value, 10);
+            if (!count || count <= 0 || count > 100) {
+                batchModalError.textContent = 'Count must be between 1 and 100.';
+                return;
+            }
+            
+            setLoading(batchModalConfirmBtn, true, 'Generating...');
+            
+            let permissions = [];
+            batchPermCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
+            
+            const payload = {
+                count: count,
+                prefix: batchKeyPrefix.value.trim(),
+                limit: parseInt(batchKeyLimit.value || '10', 10),
+                device_limit: parseInt(batchKeyDeviceLimit.value || '1', 10),
+                expiry: batchKeyExpiry.value || null,
+                permissions: permissions
+            };
+            
+            const result = await apiRequest('/admin/batch_add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (result.success) {
+                await loadKeys();
+                closeBatchKeyModal();
+                alert(result.message || 'Batch job complete.');
+            } else {
+                batchModalError.textContent = result.error || 'Failed to generate keys.';
+            }
+            setLoading(batchModalConfirmBtn, false, 'Generate Keys');
+        }
+
+        // --- History Modal Logic ---
+        async function showHistory(pin) {
+            historyModalTitle.textContent = `Search History for: ${pin}`;
+            historyModalBody.innerHTML = '<p>Loading...</p>';
+            historyModal.classList.remove('hidden');
+            
+            const result = await apiRequest(`/admin/history?pin=${pin}`);
+            if (result.success && result.history) {
+                if (result.history.length === 0) {
+                    historyModalBody.innerHTML = '<p>No search history found.</p>';
+                    return;
+                }
+                let tableHtml = `<table class="w-full text-left text-sm"><thead class="border-b border-gray-700"><tr><th class="p-2">Date/Time (UTC)</th><th class="p-2">Type</th><th class="p-2">Query</th><th class="p-2">Device ID</th></tr></thead><tbody>`;
+                result.history.forEach(item => {
+                    const date = new Date(item.timestamp).toLocaleString('en-GB', { timeZone: 'UTC' });
+                    tableHtml += `<tr class="border-b border-gray-800"><td class="p-2">${date}</td><td class="p-2">${item.lookup_type}</td><td class="p-2 font-mono">${item.query}</td><td class="p-2 text-xs text-gray-500" title="${item.device_id}">${item.device_id.substring(0, 12)}...</td></tr>`;
+                });
+                historyModalBody.innerHTML = tableHtml + '</tbody></table>';
+            } else {
+                historyModalBody.innerHTML = `<p class="text-red-400">Error: ${result.error || 'Failed to load'}</p>`;
+            }
+        }
+        function closeHistoryModal() { historyModal.classList.add('hidden'); }
+
+        // --- Initial Event Listeners ---
         loginBtn.addEventListener('click', handleLogin);
         passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
         logoutBtn.addEventListener('click', handleLogout);
+        
+        // Dashboard triggers
         document.getElementById('tab-dashboard').addEventListener('click', loadDashboardStats);
+
+        // Settings
         saveNoteBtn.addEventListener('click', handleSaveNote);
         apiHealthCheckBtn.addEventListener('click', handleApiHealthCheck);
+        
+        // Key Modals
         addKeyBtn.addEventListener('click', () => openKeyModal('add'));
         batchAddKeyBtn.addEventListener('click', openBatchKeyModal);
         modalCancelBtn.addEventListener('click', closeKeyModal);
         modalConfirmBtn.addEventListener('click', handleModalConfirm);
         batchModalCancelBtn.addEventListener('click', closeBatchKeyModal);
         batchModalConfirmBtn.addEventListener('click', handleBatchModalConfirm);
+        
+        // History Modal
         historyModalCloseBtn.addEventListener('click', closeHistoryModal);
+        
+        // User Search
         userSearchBtn.addEventListener('click', () => loadUsers(userSearchInput.value));
-        userSearchClearBtn.addEventListener('click', () => { userSearchInput.value = ''; loadUsers(); });
+        userSearchClearBtn.addEventListener('click', () => {
+            userSearchInput.value = '';
+            loadUsers();
+        });
         userSearchInput.addEventListener('keyup', (e) => e.key === 'Enter' && loadUsers(userSearchInput.value));
 
         // --- Initial Load ---
-        // --- FIX: Only showLogin initially. Dashboard is loaded via handleLogin ---
         showLogin();
-        // The check for existing session is removed; login button MUST be clicked.
+        apiRequest('/admin/keys').then(result => {
+             if (result.success) showDashboard();
+        });
     </script>
 </body>
 </html>
