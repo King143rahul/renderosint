@@ -12,9 +12,11 @@
         .glass-card { background: rgba(22, 27, 34, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); }
         .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .result-key { color: #8b949e; width: 140px; display: inline-block; font-weight: 500; text-transform: capitalize; vertical-align: top; flex-shrink: 0; }
-        .result-value { display: inline-block; width: calc(100% - 145px); word-wrap: break-word; white-space: pre-wrap; flex-grow: 1; }
-        .result-pair { display: flex; flex-wrap: nowrap; }
+        /* --- UPDATED CSS --- */
+        .result-key { color: #8b949e; width: 160px; display: inline-block; font-weight: 500; text-transform: capitalize; vertical-align: top; flex-shrink: 0; }
+        .result-value { display: inline-block; width: calc(100% - 165px); word-wrap: break-word; white-space: pre-wrap; flex-grow: 1; }
+        .result-pair { display: flex; flex-wrap: nowrap; align-items: flex-start; }
+        /* --- END UPDATED CSS --- */
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -99,15 +101,12 @@
             }
         }
 
-        // --- UPDATED: performSearch function ---
+        // --- UPDATED: performSearch function (More robust error handling) ---
         async function performSearch() {
-            // --- NEW: Cleaning logic ---
             let number = numberInput.value.trim();
             if (SERVICE_TYPE === 'phone') {
-                // Remove all spaces, then remove leading +91
                 number = number.replace(/\s+/g, '').replace(/^\+91/, '');
             }
-            // --- End Cleaning ---
             
             const pin = pinInput.value.trim();
             const deviceId = getDeviceId(); 
@@ -122,23 +121,26 @@
                 return;
             }
 
-            // --- NEW: 10-digit Validation ---
             if (SERVICE_TYPE === 'phone' && (number.length !== 10 || !/^\d+$/.test(number))) {
                 displayError("Phone number must be exactly 10 digits.");
                 return;
             }
-            // --- End Validation ---
 
             setLoading(true);
+            let responseText = ''; // For debugging
 
             try {
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId }) // Send the cleaned number
+                    body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId })
                 });
-                const result = await response.json();
+
+                responseText = await response.text(); // Get text first
+                const result = JSON.parse(responseText); // Then try to parse
+                
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+                
                 if (result.status === 'success' && savePinCheck.checked) {
                     localStorage.setItem('osintApiKey', pin);
                 } else if (!savePinCheck.checked) {
@@ -146,9 +148,16 @@
                 }
                 displayResults(result);
             } catch (error) {
-                // This catch block handles the "Unexpected token" error
                 console.error("Search Error:", error);
-                displayError(error.message || "An unexpected error occurred. Please try again.");
+                console.error("Server Response Text:", responseText); // Log the bad response
+                
+                let errorMsg = error.message || "An unexpected error occurred.";
+                if (error instanceof SyntaxError) { // Better error for "Unexpected token"
+                    errorMsg = "Failed to read server response. Please try again.";
+                    if (responseText.includes("502")) errorMsg = "Server error (502 Bad Gateway). A data source might be down.";
+                    else if (responseText.includes("504")) errorMsg = "Server error (504 Gateway Timeout). Request took too long.";
+                }
+                displayError(errorMsg);
             } finally {
                 setLoading(false);
             }
@@ -173,11 +182,28 @@
             '@MrHazex'
         ];
 
+        // --- NEW: Helper function to check for empty/junk data ---
+        function isDataEmpty(data) {
+            if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+                return true;
+            }
+            for (const key of Object.keys(data)) {
+                const value = data[key];
+                let valueString = String(value).toLowerCase();
+                let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
+                if (!junkKeys.includes(key.toLowerCase()) && !isJunkValue && value !== null && value !== undefined && value !== 'NA' && value !== 'Not Available' && value !== '') {
+                    return false; // Found a valid key
+                }
+            }
+            return true; // No valid keys found
+        }
+        
         const prettyKey = (key) => {
              const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
             return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
         };
 
+        // --- UPDATED: renderObject function (Cleans data) ---
         function renderObject(data) {
             let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
             const allKeys = Object.keys(data);
@@ -200,7 +226,12 @@
                 } else if (Array.isArray(value)) {
                     valueHtml = `<div class="pl-4">${value.map(item => typeof item === 'object' ? renderObject(item) : `<span class="block">${item}</span>`).join('')}</div>`;
                 } else {
-                    let displayValue = (value || '').toString().replace(/!/g, ', ');
+                    // UPDATED: Clean display value
+                    let displayValue = (value || '').toString()
+                        .replace(/!/g, ', ')        // Replace ! with comma
+                        .replace(/\s*,\s*/g, ', ')  // Normalize commas
+                        .replace(/^,\s*/, '')       // Remove leading comma
+                        .trim();                    // Trim whitespace
                     let valueClass = (priorityKeys.includes(key)) ? 'text-cyan-400 font-bold' : '';
                     valueHtml = `<span class="result-value ${valueClass}">${displayValue}</span>`;
                 }
@@ -210,6 +241,7 @@
             return html;
         }
 
+        // --- UPDATED: displayResults function (Checks for empty data) ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -218,10 +250,11 @@
             }
             const allKeys = Object.keys(result);
             const dataKeys = allKeys.filter(k => !['status', 'key_status', 'dev'].includes(k));
-            if (dataKeys.length === 0) {
+            if (dataKeys.length === 0 && isDataEmpty(result)) { // Modified check
                  displayError('No data found for this query.');
                  return;
             }
+            
             let htmlContent = '';
             let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
             const resultId = 'result-text-0';
@@ -233,15 +266,24 @@
                     const title = item.error ? `Source ${index + 1} (Error)` : `Source ${index + 1}`;
                     const titleColor = item.error ? 'text-red-400' : 'text-cyan-400';
                     htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4"><div class="p-3 border-b border-gray-700"><span class="${titleColor} font-semibold">${title}</span></div><div class="p-4 space-y-2 text-sm text-gray-200">`;
+                    
                     if (item.error) {
                         htmlContent += `<div class="text-red-300">${item.error}</div>`;
                         plainTextContent += `\n--- ${title} ---\nError: ${item.error}\n`;
+                    } else if (isDataEmpty(item)) { // --- NEW CHECK ---
+                        htmlContent += `<div class="text-gray-400">No information found from this source.</div>`;
+                        plainTextContent += `\n--- ${title} ---\nNo information found.\n`;
                     } else {
                         htmlContent += renderObject(item);
                         plainTextContent += `\n--- ${title} ---\n`;
                         Object.entries(item).forEach(([k, v]) => {
-                            let vString = String(v).toLowerCase(); let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                            if (v !== null && v !== 'NA' && v !== '' && !isJunk) { plainTextContent += `${prettyKey(k)}: ${v}\n`; }
+                            let vString = String(v).toLowerCase(); 
+                            let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                            // UPDATED: Added junkKeys check and cleanValue
+                            if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
+                                let cleanValue = String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+                                plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                            }
                         });
                     }
                     htmlContent += `</div></div>`;
@@ -252,14 +294,23 @@
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-red-400 font-semibold">Result (Error)</span></div>`;
                     htmlContent += `<div class="p-4 text-red-300">${result.error}</div>`;
                     plainTextContent += `--- Result (Error) ---\nError: ${result.error}\n`;
+                } else if (isDataEmpty(result)) { // --- NEW CHECK ---
+                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
+                    htmlContent += `<div class="p-4 text-gray-400">No information found.</div>`;
+                    plainTextContent += `--- Result ---\nNo information found.\n`;
                 } else {
                     htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
                     htmlContent += `<div class="p-4 space-y-2 text-sm text-gray-200">`;
                     htmlContent += renderObject(result);
                     plainTextContent += `--- Result ---\n`;
                     Object.entries(result).forEach(([k, v]) => {
-                        let vString = String(v).toLowerCase(); let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { plainTextContent += `${prettyKey(k)}: ${v}\n`; }
+                        let vString = String(v).toLowerCase(); 
+                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                        // UPDATED: Added junkKeys check and cleanValue
+                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
+                            let cleanValue = String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+                            plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                        }
                     });
                     htmlContent += `</div>`;
                 }
