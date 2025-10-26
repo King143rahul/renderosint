@@ -19,10 +19,15 @@ from bson import ObjectId
 load_dotenv()
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
+# --- NEW: Explicit check for secret key ---
+if not app.secret_key:
+    raise ValueError("CRITICAL: SECRET_KEY environment variable is not set or generated.")
+# --- END NEW ---
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Make session permanent (lasts longer)
 # app.config['SESSION_PERMANENT'] = True
 # app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=30)
+
 
 # --- Security headers ---
 @app.after_request
@@ -67,12 +72,10 @@ def get_db_collections():
         return
     try:
         if DB_CLIENT is None:
-            # Using V4 as reference, adjust if needed
-            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV4")
+            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV4") # Kept V4 name
         db = DB_CLIENT.osint_db
         KEYS_COLLECTION = db.keys
         KEYS_COLLECTION.create_index("pin", unique=True)
-        # Removed index: KEYS_COLLECTION.create_index("linked_user_phone")
         SEARCH_HISTORY_COLLECTION = db.history
         SEARCH_HISTORY_COLLECTION.create_index([("pin", 1), ("timestamp", -1)])
         USERS_COLLECTION = db.users
@@ -109,272 +112,203 @@ def get_details_from_vahanx(rc_number: str) -> dict:
         return {"error": f"Vahanx scraper failed: {str(e)}"}
 
 def safe_api_call(url: str, headers: dict, timeout=15) -> dict:
-    if not url:
-        return {"error": "API endpoint not configured."}
+    if not url: return {"error": "API endpoint not configured."}
     try:
         response = requests.get(url, timeout=timeout, headers=headers)
         response.raise_for_status()
         response_text = response.text
         return response.json()
-    except JSONDecodeError:
-        return {"error": f"API did not return valid JSON. Response: {response_text[:100]}..."}
-    except (ConnectTimeout, ReadTimeout):
-        return {"error": "API call timed out."}
-    except requests.exceptions.RequestException as e:
-        return {"error": f"Network error: {str(e)}"}
-    except Exception as e:
-        return {"error": f"Unknown error: {str(e)}"}
+    except JSONDecodeError: return {"error": f"API Invalid JSON: {response_text[:100]}..."}
+    except (ConnectTimeout, ReadTimeout): return {"error": "API timed out."}
+    except requests.exceptions.RequestException as e: return {"error": f"Network error: {e}"}
+    except Exception as e: return {"error": f"Unknown error: {e}"}
 
 def log_search(pin: str, lookup_type: str, number: str, device_id: str):
     if SEARCH_HISTORY_COLLECTION is None: return
     try:
         log_entry = {"pin": pin, "lookup_type": lookup_type, "query": number, "device_id": device_id, "timestamp": datetime.datetime.now(datetime.timezone.utc)}
         SEARCH_HISTORY_COLLECTION.insert_one(log_entry)
-    except Exception as e:
-        print(f"Failed to log search for pin {pin}: {e}")
-
-# Removed user_login_required decorator
+    except Exception as e: print(f"Failed to log search for {pin}: {e}")
 
 # ----------------------------------------------------------------- #
-# --- Main App Routes (Homepage, Login, Logout, Search) ---
-# --- Simplified Login/Logout - No Account Page ---
+# --- Main App Routes ---
 # ----------------------------------------------------------------- #
 @app.route('/')
 def home():
-    # Basic session check for greeting, no dedicated account page
     user_info = None
-    if 'user_phone' in session:
-        user_info = {"name": session.get('user_name'), "phone": session.get('user_phone')}
+    if 'user_phone' in session: user_info = {"name": session.get('user_name'), "phone": session.get('user_phone')}
     return render_template("index.html", user_info=user_info)
 
 @app.route('/login', methods=['GET', 'POST'])
 def user_login():
-    if 'user_phone' in session:
-        return redirect(url_for('home')) # Redirect if already logged in
+    if 'user_phone' in session: return redirect(url_for('home'))
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        phone = request.form.get('phone', '').strip()
+        name, phone = request.form.get('name', '').strip(), request.form.get('phone', '').strip()
         if not name or not phone or not phone.isdigit() or len(phone) < 10:
-            return render_template("user_login.html", error="Please enter a valid name and 10-digit phone number.")
-        if USERS_COLLECTION is None:
-            return render_template("user_login.html", error="Database connection error.")
-
+            return render_template("user_login.html", error="Valid name & 10-digit phone required.")
+        if USERS_COLLECTION is None: return render_template("user_login.html", error="DB connection error.")
         user = USERS_COLLECTION.find_one({"phone": phone})
-        if user and user.get('is_banned', False):
-            return render_template("user_login.html", error="Account suspended.")
-
+        if user and user.get('is_banned', False): return render_template("user_login.html", error="Account suspended.")
         try:
-            USERS_COLLECTION.update_one(
-                {"phone": phone},
+            USERS_COLLECTION.update_one({"phone": phone},
                 {"$set": {"name": name, "last_login": datetime.datetime.now(datetime.timezone.utc), "is_banned": False},
-                 "$setOnInsert": {"first_login": datetime.datetime.now(datetime.timezone.utc)}},
-                upsert=True
-            )
-            session['user_phone'] = phone
-            session['user_name'] = name
-            # Make session last longer if needed
-            session.permanent = True
-            app.permanent_session_lifetime = datetime.timedelta(days=30)
-
+                 "$setOnInsert": {"first_login": datetime.datetime.now(datetime.timezone.utc)}}, upsert=True)
+            session['user_phone'], session['user_name'] = phone, name
+            session.permanent = True; app.permanent_session_lifetime = datetime.timedelta(days=30)
             return redirect(url_for('home'))
-        except Exception as e:
-            print(f"User login error: {e}")
-            return render_template("user_login.html", error="An error occurred.")
+        except Exception as e: print(f"User login error: {e}"); return render_template("user_login.html", error="An error occurred.")
     return render_template("user_login.html")
 
 @app.route('/logout')
 def user_logout():
-    session.pop('user_phone', None)
-    session.pop('user_name', None)
-    return redirect(url_for('home'))
+    session.pop('user_phone', None); session.pop('user_name', None); return redirect(url_for('home'))
 
 @app.route('/search/<service_type>')
 def search_page(service_type):
-    page_config = {
-        "phone": {"title": "Phone Search", "placeholder": "Enter Phone Number", "icon_class": "fas fa-mobile-alt"},
-        "vehicle": {"title": "Vehicle Search", "placeholder": "Enter Vehicle Number", "icon_class": "fas fa-car"},
-        "aadhaar": {"title": "Aadhaar Info", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-id-card"},
-        "family": {"title": "Aadhaar to Family", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-users"},
-        "insta": {"title": "Instagram Info", "placeholder": "Enter Instagram Username", "icon_class": "fab fa-instagram"}
-    }
-    config = page_config.get(service_type)
+    page_config = { "phone": {"title": "Phone Search", "placeholder": "Enter Phone Number", "icon_class": "fas fa-mobile-alt"}, "vehicle": {"title": "Vehicle Search", "placeholder": "Enter Vehicle Number", "icon_class": "fas fa-car"}, "aadhaar": {"title": "Aadhaar Info", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-id-card"}, "family": {"title": "Aadhaar to Family", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-users"}, "insta": {"title": "Instagram Info", "placeholder": "Enter Instagram Username", "icon_class": "fab fa-instagram"} }
+    config = page_config.get(service_type);
     if not config: return abort(404)
     return render_template("search_page.html", **config, service_type=service_type)
 
 @app.route('/api/config')
 def get_public_config():
     if CONFIG_COLLECTION is None: return jsonify({"note": None})
-    config = CONFIG_COLLECTION.find_one({"config_id": "global_config"})
-    return jsonify({"note": config.get("global_note") if config else None})
+    config = CONFIG_COLLECTION.find_one({"config_id": "global_config"}); return jsonify({"note": config.get("global_note") if config else None})
 
 @app.route('/api/search', methods=['POST'])
 def search():
-    if KEYS_COLLECTION is None: return jsonify({"error": "Database connection error."}), 500
+    if KEYS_COLLECTION is None: return jsonify({"error": "DB connection error."}), 500
     data = request.json or {}
     lookup_type, pin, device_id = data.get('type'), data.get('pin'), data.get('deviceId')
-    number_raw = data.get('number', '').strip()
-    number = re.sub(r'\s+', '', number_raw).lstrip('+91')
-
-    if not all([lookup_type, number, pin, device_id]):
-        return jsonify({"error": "Missing required fields."}), 400
-    if lookup_type == "phone" and (not number.isdigit() or len(number) != 10):
-        return jsonify({"error": "Phone number must be exactly 10 digits."}), 400
+    number_raw = data.get('number', '').strip(); number = re.sub(r'\s+', '', number_raw).lstrip('+91')
+    if not all([lookup_type, number, pin, device_id]): return jsonify({"error": "Missing fields."}), 400
+    if lookup_type == "phone" and (not number.isdigit() or len(number) != 10): return jsonify({"error": "Phone must be 10 digits."}), 400
 
     key = KEYS_COLLECTION.find_one({"pin": pin})
     if not key: return jsonify({"error": "Invalid API Key"}), 401
     if key.get('expiry'):
         try:
-            if datetime.date.today() > datetime.datetime.fromisoformat(key['expiry']).date():
-                return jsonify({"error": "API Key has expired."}), 403
+            if datetime.date.today() > datetime.datetime.fromisoformat(key['expiry']).date(): return jsonify({"error": "Key expired."}), 403
         except ValueError: pass
-    if key.get('used_today', 0) >= key.get('limit_count', 10):
-        return jsonify({"error": "Daily search limit reached."}), 403
+    if key.get('used_today', 0) >= key.get('limit_count', 10): return jsonify({"error": "Daily limit reached."}), 403
 
-    device_limit = key.get('device_limit', 1)
-    device_ids = key.get('device_ids', [])
+    device_limit = key.get('device_limit', 1); device_ids = key.get('device_ids', [])
     if device_id not in device_ids:
-        if len(device_ids) < device_limit:
-            KEYS_COLLECTION.update_one({"pin": pin}, {"$push": {"device_ids": device_id}})
-        else:
-            return jsonify({"error": f"Device limit ({device_limit}) reached."}), 403
+        if len(device_ids) < device_limit: KEYS_COLLECTION.update_one({"pin": pin}, {"$push": {"device_ids": device_id}})
+        else: return jsonify({"error": f"Device limit ({device_limit}) reached."}), 403
 
     permission_map = {"phone": "allow_phone", "vehicle": "allow_vehicle", "aadhaar": "allow_aadhaar", "family": "allow_family", "insta": "allow_insta"}
-    if not key.get(permission_map.get(lookup_type)):
-        return jsonify({"error": f"Permission denied for {lookup_type} searches."}), 403
+    if not key.get(permission_map.get(lookup_type)): return jsonify({"error": f"Permission denied for {lookup_type}."}), 403
 
-    headers = {'User-Agent': generate_user_agent()}
-    api_data = {}
+    headers = {'User-Agent': generate_user_agent()}; api_data = {}
     try:
         if lookup_type == "phone":
-            api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
-            api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
+            api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers); api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers); api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
         elif lookup_type == "vehicle":
-            api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)
-            api_data['result_3'] = get_details_from_vahanx(number)
-        elif lookup_type == "aadhaar":
-            api_data = safe_api_call(AADHAAR_API.format(number), headers)
-        elif lookup_type == "family":
-            api_data = safe_api_call(AADHAAR_FAMILY_API.format(number), headers)
-        elif lookup_type == "insta":
-            api_data = safe_api_call(INSTA_API.format(number), headers)
-        else:
-            return jsonify({"error": "Invalid lookup type"}), 400
-    except Exception as e:
-        return jsonify({"error": f"Failed to fetch data: {e}"}), 502
+            api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers); api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers); api_data['result_3'] = get_details_from_vahanx(number)
+        elif lookup_type == "aadhaar": api_data = safe_api_call(AADHAAR_API.format(number), headers)
+        elif lookup_type == "family": api_data = safe_api_call(AADHAAR_FAMILY_API.format(number), headers)
+        elif lookup_type == "insta": api_data = safe_api_call(INSTA_API.format(number), headers)
+        else: return jsonify({"error": "Invalid lookup type"}), 400
+    except Exception as e: return jsonify({"error": f"API fetch error: {e}"}), 502
 
-    KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
-    log_search(pin, lookup_type, number, device_id)
+    KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}}); log_search(pin, lookup_type, number, device_id)
     key_info = {"searches_left": key.get('limit_count', 10) - key.get('used_today', 0) - 1, "expiry_date": key.get('expiry') or "Never"}
     final_response = {**(api_data if isinstance(api_data, dict) else {"result": api_data}), "status": "success", "key_status": key_info, "dev": "RAHUL SHARMA"}
     return jsonify(final_response)
 
-# Removed User Account API Routes (/api/account/*)
-
 # ----------------------------------------------------------------- #
-# --- Admin Panel Routes (Keeping V4 features) ---
+# --- Admin Panel Routes (Keeping V4 features, No user link) ---
 # ----------------------------------------------------------------- #
 if ENABLE_ADMIN_PANEL:
     def admin_required(f):
         from functools import wraps
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not session.get('is_admin'):
-                return jsonify({"success": False, "error": "Unauthorized"}), 401
+            if not session.get('is_admin'): return jsonify({"success": False, "error": "Unauthorized"}), 401
             return f(*args, **kwargs)
         return decorated_function
 
     def make_serializable(doc):
-        for key, val in doc.items():
-            if isinstance(val, ObjectId): doc[key] = str(val)
-            if isinstance(val, datetime.datetime): doc[key] = val.isoformat()
+        for k, v in doc.items():
+            if isinstance(v, ObjectId): doc[k] = str(v)
+            if isinstance(v, datetime.datetime): doc[k] = v.isoformat()
         return doc
 
     @app.route('/admin')
-    @admin_required
-    def admin_page(): return render_template("admin.html")
+    def admin_page(): return render_template("admin.html") # Render without checking session here
 
     @app.route('/admin/login', methods=['POST'])
     def admin_login():
         data = request.get_json(silent=True) or {}
         if data.get('username') == ADMIN_USERNAME and data.get('password') == ADMIN_PASSWORD:
-            session['is_admin'] = True
+            session['is_admin'] = True; session.permanent = True # Make admin session permanent
             return jsonify({"success": True})
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
     @app.route('/admin/logout', methods=['POST'])
     def admin_logout():
-        session.pop('is_admin', None)
-        return jsonify({"success": True})
+        session.pop('is_admin', None); return jsonify({"success": True})
+
+    @app.route('/admin/check_session', methods=['GET'])
+    def check_admin_session():
+        # Simple endpoint for frontend to check if session is still valid
+        if session.get('is_admin'):
+            return jsonify({"success": True, "is_admin": True})
+        else:
+            return jsonify({"success": True, "is_admin": False})
+
 
     @app.route('/admin/dashboard_stats', methods=['GET'])
     @admin_required
     def admin_dashboard_stats():
-        if not all([KEYS_COLLECTION, USERS_COLLECTION, SEARCH_HISTORY_COLLECTION]):
-            return jsonify({"success": False, "error": "Database error."}), 500
+        if not all([KEYS_COLLECTION, USERS_COLLECTION, SEARCH_HISTORY_COLLECTION]): return jsonify({"success": False, "error": "DB error."}), 500
         try:
-            total_searches_today = sum(k.get('used_today', 0) for k in KEYS_COLLECTION.find({}, {"used_today": 1}))
-            today_str = datetime.date.today().isoformat()
-            active_keys = KEYS_COLLECTION.count_documents({"$or": [{"expiry": {"$gte": today_str}}, {"expiry": None}]})
-            top_5_keys = list(KEYS_COLLECTION.find({}, {"pin": 1, "used_today": 1, "_id": 0}).sort("used_today", -1).limit(5))
-            total_users = USERS_COLLECTION.count_documents({})
-            seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
-            popular_services = list(SEARCH_HISTORY_COLLECTION.aggregate([
-                {"$match": {"timestamp": {"$gte": seven_days_ago}}},
-                {"$group": {"_id": "$lookup_type", "count": {"$sum": 1}}}, {"$sort": {"count": -1}}]))
-            recent_searches = [make_serializable(s) for s in SEARCH_HISTORY_COLLECTION.find().sort("timestamp", -1).limit(10)]
-            stats = {"total_searches_today": total_searches_today, "active_keys": active_keys, "total_users": total_users, "top_5_keys": top_5_keys, "popular_services": popular_services, "recent_searches": recent_searches}
+            total_searches = sum(k.get('used_today', 0) for k in KEYS_COLLECTION.find({}, {"used_today": 1}))
+            active = KEYS_COLLECTION.count_documents({"$or": [{"expiry": {"$gte": datetime.date.today().isoformat()}}, {"expiry": None}]})
+            top_keys = list(KEYS_COLLECTION.find({}, {"pin": 1, "used_today": 1, "_id": 0}).sort("used_today", -1).limit(5))
+            total_u = USERS_COLLECTION.count_documents({})
+            ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+            popular = list(SEARCH_HISTORY_COLLECTION.aggregate([{"$match": {"timestamp": {"$gte": ago}}}, {"$group": {"_id": "$lookup_type", "count": {"$sum": 1}}}, {"$sort": {"count": -1}}]))
+            recent = [make_serializable(s) for s in SEARCH_HISTORY_COLLECTION.find().sort("timestamp", -1).limit(10)]
+            stats = {"total_searches_today": total_searches, "active_keys": active, "total_users": total_u, "top_5_keys": top_keys, "popular_services": popular, "recent_searches": recent}
             return jsonify({"success": True, "stats": stats})
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+        except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/api_health', methods=['GET'])
     @admin_required
     def admin_api_health():
-        apis_to_check = [
-            {"name": "Phone 1 (Byekam)", "url": PHONE_API_1, "query": "1234567890"}, {"name": "Phone 2 (Demon)", "url": PHONE_API_2, "query": "1234567890"},
-            {"name": "Phone 3 (Ox)", "url": PHONE_API_3, "query": "1234567890"}, {"name": "Vehicle 1 (Byekam)", "url": VEHICLE_API_1, "query": "DL1CAB1234"},
-            {"name": "Vehicle 2 (Hazex)", "url": VEHICLE_API_2, "query": "DL1CAB1234"}, {"name": "Aadhaar (Ox)", "url": AADHAAR_API, "query": "123456789012"},
-            {"name": "Aadhaar Family (Ox)", "url": AADHAAR_FAMILY_API, "query": "123456789012"}, {"name": "Instagram", "url": INSTA_API, "query": "dummyuser"}]
+        apis = [{"name": n, "url": u, "query": q} for n, u, q in [
+            ("Phone 1", PHONE_API_1, "1234567890"), ("Phone 2", PHONE_API_2, "1234567890"), ("Phone 3", PHONE_API_3, "1234567890"),
+            ("Vehicle 1", VEHICLE_API_1, "DL1CAB1234"), ("Vehicle 2", VEHICLE_API_2, "DL1CAB1234"), ("Aadhaar", AADHAAR_API, "123456789012"),
+            ("Aadhaar Family", AADHAAR_FAMILY_API, "123456789012"), ("Instagram", INSTA_API, "dummyuser")]]
         results, headers = [], {'User-Agent': generate_user_agent()}
-        for api in apis_to_check:
-            if not api["url"]: results.append({"name": api["name"], "status": "Not Configured", "message": "URL missing"}); continue
+        for api in apis:
+            if not api["url"]: results.append({"name": api["name"], "status": "N/A", "message": "Missing URL"}); continue
             res = safe_api_call(api["url"].format(api["query"]), headers, timeout=5)
-            status = "OK" if "error" not in res else "Failed"; message = res.get("error", "Success")
-            results.append({"name": api["name"], "status": status, "message": message})
+            status = "OK" if "error" not in res else "Failed"; msg = res.get("error", "Success")
+            results.append({"name": api["name"], "status": status, "message": msg})
         return jsonify({"success": True, "results": results})
 
-    # --- UPDATED /admin/keys to remove user linking ---
     @app.route('/admin/keys', methods=['GET'])
     @admin_required
     def admin_get_keys():
-        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database error."}), 500
+        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "DB error."}), 500
         try:
-            keys_rows = [make_serializable(k) for k in KEYS_COLLECTION.find().sort("created_at", -1)]
-            for row in keys_rows: row['id'] = row['pin'] # Keep ID for frontend compatibility
-            # Removed user info population
-            return jsonify({"success": True, "keys": keys_rows})
-        except Exception as e:
-            print(f"Error in /admin/keys: {e}")
-            return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
-    # --- END UPDATE ---
+            keys = [make_serializable(k) for k in KEYS_COLLECTION.find().sort("created_at", -1)]
+            for row in keys: row['id'] = row['pin'] # Keep for frontend ID
+            return jsonify({"success": True, "keys": keys})
+        except Exception as e: print(f"Error /admin/keys: {e}"); return jsonify({"success": False, "error": f"Internal error: {e}"}), 500
 
     @app.route('/admin/add', methods=['POST'])
     @admin_required
     def add_key():
-        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database error."}), 500
         data = request.json or {}; pin = data.get('pin')
         if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
-        key_doc = {
-            "pin": pin, "limit_count": int(data.get('limit', 10)), "expiry": data.get('expiry') or None,
-            "device_limit": int(data.get('device_limit', 1)), "device_ids": [],
-            "allow_phone": 1 if "phone" in data.get('permissions', []) else 0, "allow_vehicle": 1 if "vehicle" in data.get('permissions', []) else 0,
-            "allow_aadhaar": 1 if "aadhaar" in data.get('permissions', []) else 0, "allow_family": 1 if "family" in data.get('permissions', []) else 0,
-            "allow_insta": 1 if "insta" in data.get('permissions', []) else 0,
-            "used_today": 0, "created_at": datetime.datetime.now(datetime.timezone.utc)
-            # Removed linked_user_phone
-        }
+        perms = data.get('permissions', [])
+        key_doc = {"pin": pin, "limit_count": int(data.get('limit', 10)), "expiry": data.get('expiry') or None, "device_limit": int(data.get('device_limit', 1)), "device_ids": [],
+                   "allow_phone": 1 if "phone" in perms else 0, "allow_vehicle": 1 if "vehicle" in perms else 0, "allow_aadhaar": 1 if "aadhaar" in perms else 0,
+                   "allow_family": 1 if "family" in perms else 0, "allow_insta": 1 if "insta" in perms else 0, "used_today": 0, "created_at": datetime.datetime.now(datetime.timezone.utc)}
         try: KEYS_COLLECTION.insert_one(key_doc); return jsonify({"success": True})
         except DuplicateKeyError: return jsonify({"success": False, "error": "PIN exists."}), 409
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
@@ -382,112 +316,86 @@ if ENABLE_ADMIN_PANEL:
     @app.route('/admin/batch_add', methods=['POST'])
     @admin_required
     def batch_add_keys():
-        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database error."}), 500
         data = request.json or {}; count = int(data.get('count', 0)); prefix = data.get('prefix', '')
-        if not 1 <= count <= 100: return jsonify({"success": False, "error": "Count must be 1-100."}), 400
-        base_doc = {
-            "limit_count": int(data.get('limit', 10)), "expiry": data.get('expiry') or None, "device_limit": int(data.get('device_limit', 1)), "device_ids": [],
-            "allow_phone": 1 if "phone" in data.get('permissions', []) else 0, "allow_vehicle": 1 if "vehicle" in data.get('permissions', []) else 0,
-            "allow_aadhaar": 1 if "aadhaar" in data.get('permissions', []) else 0, "allow_family": 1 if "family" in data.get('permissions', []) else 0,
-            "allow_insta": 1 if "insta" in data.get('permissions', []) else 0,
-            "used_today": 0, "created_at": datetime.datetime.now(datetime.timezone.utc)
-        }
-        keys_to_insert = []
-        for _ in range(count):
-            random_pin = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            key_doc = base_doc.copy(); key_doc["pin"] = f"{prefix}{random_pin}"; keys_to_insert.append(key_doc)
-        try:
-            result = KEYS_COLLECTION.insert_many(keys_to_insert, ordered=False)
-            return jsonify({"success": True, "message": f"Created {len(result.inserted_ids)} keys."})
-        except pymongo.errors.BulkWriteError as bwe:
-            return jsonify({"success": True, "message": f"Created {bwe.details['nInserted']} keys. {count - bwe.details['nInserted']} duplicates failed."})
+        if not 1 <= count <= 100: return jsonify({"success": False, "error": "Count 1-100."}), 400
+        perms = data.get('permissions', [])
+        base = {"limit_count": int(data.get('limit', 10)), "expiry": data.get('expiry') or None, "device_limit": int(data.get('device_limit', 1)), "device_ids": [],
+                "allow_phone": 1 if "phone" in perms else 0, "allow_vehicle": 1 if "vehicle" in perms else 0, "allow_aadhaar": 1 if "aadhaar" in perms else 0,
+                "allow_family": 1 if "family" in perms else 0, "allow_insta": 1 if "insta" in perms else 0, "used_today": 0, "created_at": datetime.datetime.now(datetime.timezone.utc)}
+        keys = []
+        for _ in range(count): r = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8)); d = base.copy(); d["pin"] = f"{prefix}{r}"; keys.append(d)
+        try: result = KEYS_COLLECTION.insert_many(keys, ordered=False); return jsonify({"success": True, "message": f"Created {len(result.inserted_ids)} keys."})
+        except pymongo.errors.BulkWriteError as b: return jsonify({"success": True, "message": f"Created {b.details['nInserted']}. {count - b.details['nInserted']} duplicates failed."})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/update', methods=['POST'])
     @admin_required
     def update_key():
-        if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database error."}), 500
-        data, pin = request.json or {}, data.get('pin')
+        data, pin = request.json or {}, data.get('pin');
         if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
-        update_doc = {"$set": {}}
-        if 'limit' in data: update_doc["$set"]["limit_count"] = int(data['limit'])
-        if 'expiry' in data: update_doc["$set"]["expiry"] = data['expiry'] or None
-        if 'device_limit' in data: update_doc["$set"]["device_limit"] = int(data['device_limit'])
-        if 'permissions' in data:
-            perms = data['permissions']
-            update_doc["$set"].update({k: 1 if v in perms else 0 for v, k in zip(
-                ["phone", "vehicle", "aadhaar", "family", "insta"],
-                ["allow_phone", "allow_vehicle", "allow_aadhaar", "allow_family", "allow_insta"])})
-        if not update_doc["$set"]: return jsonify({"success": False, "error": "No fields to update."}), 400
+        up = {"$set": {}}; perms = data.get('permissions')
+        if 'limit' in data: up["$set"]["limit_count"] = int(data['limit'])
+        if 'expiry' in data: up["$set"]["expiry"] = data['expiry'] or None
+        if 'device_limit' in data: up["$set"]["device_limit"] = int(data['device_limit'])
+        if perms is not None:
+            up["$set"].update({k: 1 if v in perms else 0 for v, k in zip(["phone", "vehicle", "aadhaar", "family", "insta"], ["allow_phone", "allow_vehicle", "allow_aadhaar", "allow_family", "allow_insta"])})
+        if not up["$set"]: return jsonify({"success": False, "error": "No fields to update."}), 400
         try:
-            result = KEYS_COLLECTION.update_one({"pin": pin}, update_doc)
-            if result.matched_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
+            r = KEYS_COLLECTION.update_one({"pin": pin}, up)
+            if r.matched_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
             return jsonify({"success": True})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/delete', methods=['POST'])
     @admin_required
     def delete_key():
-        key_pin = (request.json or {}).get('id')
-        if not key_pin: return jsonify({"success": False, "error": "PIN required."}), 400
+        pin = (request.json or {}).get('id');
+        if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
         try:
-            result = KEYS_COLLECTION.delete_one({"pin": key_pin})
-            if result.deleted_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
-            if SEARCH_HISTORY_COLLECTION: SEARCH_HISTORY_COLLECTION.delete_many({"pin": key_pin})
+            r = KEYS_COLLECTION.delete_one({"pin": pin})
+            if r.deleted_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
+            if SEARCH_HISTORY_COLLECTION: SEARCH_HISTORY_COLLECTION.delete_many({"pin": pin})
             return jsonify({"success": True})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/reset_device', methods=['POST'])
     @admin_required
     def reset_device():
-        key_pin = (request.json or {}).get('id')
-        if not key_pin: return jsonify({"success": False, "error": "PIN required."}), 400
-        try:
-            result = KEYS_COLLECTION.update_one({"pin": key_pin}, {"$set": {"device_ids": []}})
-            if result.matched_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
-            return jsonify({"success": True})
+        pin = (request.json or {}).get('id');
+        if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
+        try: r = KEYS_COLLECTION.update_one({"pin": pin}, {"$set": {"device_ids": []}}); return jsonify({"success": True}) if r.matched_count > 0 else jsonify({"success": False, "error": "Key not found."}), 404
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/reset_usage', methods=['POST'])
     @admin_required
     def reset_usage():
-        key_pin = (request.json or {}).get('id')
-        if not key_pin: return jsonify({"success": False, "error": "PIN required."}), 400
-        try:
-            result = KEYS_COLLECTION.update_one({"pin": key_pin}, {"$set": {"used_today": 0}})
-            if result.matched_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
-            return jsonify({"success": True})
+        pin = (request.json or {}).get('id');
+        if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
+        try: r = KEYS_COLLECTION.update_one({"pin": pin}, {"$set": {"used_today": 0}}); return jsonify({"success": True}) if r.matched_count > 0 else jsonify({"success": False, "error": "Key not found."}), 404
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/history', methods=['GET'])
     @admin_required
     def get_history():
-        key_pin = request.args.get('pin')
-        if not key_pin: return jsonify({"success": False, "error": "PIN required."}), 400
-        try:
-            history_rows = [make_serializable(h) for h in SEARCH_HISTORY_COLLECTION.find({"pin": key_pin}).sort("timestamp", -1).limit(100)]
-            return jsonify({"success": True, "history": history_rows})
+        pin = request.args.get('pin');
+        if not pin: return jsonify({"success": False, "error": "PIN required."}), 400
+        try: rows = [make_serializable(h) for h in SEARCH_HISTORY_COLLECTION.find({"pin": pin}).sort("timestamp", -1).limit(100)]; return jsonify({"success": True, "history": rows})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/users', methods=['GET'])
     @admin_required
     def admin_get_users():
-        try:
-            query = {}; search = request.args.get('search')
-            if search: query = {"$or": [{"name": {"$regex": search, "$options": "i"}}, {"phone": {"$regex": search, "$options": "i"}}]}
-            users_rows = [make_serializable(u) for u in USERS_COLLECTION.find(query).sort("last_login", -1)]
-            return jsonify({"success": True, "users": users_rows})
+        try: q = {}; s = request.args.get('search');
+            if s: q = {"$or": [{"name": {"$regex": s, "$options": "i"}}, {"phone": {"$regex": s, "$options": "i"}}]}
+            rows = [make_serializable(u) for u in USERS_COLLECTION.find(q).sort("last_login", -1)]; return jsonify({"success": True, "users": rows})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/ban_user', methods=['POST'])
     @admin_required
     def admin_ban_user():
-        data, phone, ban_status = request.json or {}, data.get('phone'), bool(data.get('ban_status', False))
-        if not phone: return jsonify({"success": False, "error": "Phone required."}), 400
-        try:
-            result = USERS_COLLECTION.update_one({"phone": phone}, {"$set": {"is_banned": ban_status}})
-            if result.matched_count == 0: return jsonify({"success": False, "error": "User not found."}), 404
-            return jsonify({"success": True, "message": f"User {'banned' if ban_status else 'unbanned'}."})
+        d, p, b = request.json or {}, d.get('phone'), bool(d.get('ban_status', False))
+        if not p: return jsonify({"success": False, "error": "Phone required."}), 400
+        try: r = USERS_COLLECTION.update_one({"phone": p}, {"$set": {"is_banned": b}}); return jsonify({"success": True, "message": f"User {'banned' if b else 'unbanned'}."}) if r.matched_count > 0 else jsonify({"success": False, "error": "User not found."}), 404
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route('/admin/note', methods=['GET', 'POST'])
@@ -495,11 +403,10 @@ if ENABLE_ADMIN_PANEL:
     def admin_global_note():
         try:
             if request.method == 'POST':
-                note = (request.json or {}).get('note', '')
-                CONFIG_COLLECTION.update_one({"config_id": "global_config"}, {"$set": {"global_note": note}}, upsert=True)
+                n = (request.json or {}).get('note', '')
+                CONFIG_COLLECTION.update_one({"config_id": "global_config"}, {"$set": {"global_note": n}}, upsert=True)
                 return jsonify({"success": True, "message": "Note updated."})
-            config = CONFIG_COLLECTION.find_one({"config_id": "global_config"})
-            return jsonify({"success": True, "note": config.get("global_note", "") if config else ""})
+            c = CONFIG_COLLECTION.find_one({"config_id": "global_config"}); return jsonify({"success": True, "note": c.get("global_note", "") if c else ""})
         except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 # --- Run ---
