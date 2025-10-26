@@ -65,7 +65,6 @@
             </div>
             {% else %}
             <div id="manage-key-view">
-                
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-300 mb-3">Key Status</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -79,36 +78,22 @@
                         </div>
                         <div>
                             <label class="text-sm text-gray-400">Expires</label>
-                            <p class="text-lg font-medium text-gray-200">{{ key_info.expiry or 'Never' }}</p>
-                        </div>
+                            <p class="text-lg font-medium text-gray-200">{{ key_info.expiry.split('T')[0] if key_info.expiry else 'Never' }}</p> </div>
                         <div>
                             <label class="text-sm text-gray-400">Device Limit</label>
                             <p class="text-lg font-medium text-gray-200">{{ (key_info.device_ids or [])|length }} / {{ key_info.device_limit }}</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-300 mb-3">Permissions</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_phone else 'bg-gray-700 text-gray-400' }}">
-                            <i class="fas {{ 'fa-check' if key_info.allow_phone else 'fa-times' }}"></i> Phone
-                        </span>
-                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_vehicle else 'bg-gray-700 text-gray-400' }}">
-                            <i class="fas {{ 'fa-check' if key_info.allow_vehicle else 'fa-times' }}"></i> Vehicle
-                        </span>
-                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_aadhaar else 'bg-gray-700 text-gray-400' }}">
-                            <i class="fas {{ 'fa-check' if key_info.allow_aadhaar else 'fa-times' }}"></i> Aadhaar
-                        </span>
-                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_family else 'bg-gray-700 text-gray-400' }}">
-                            <i class="fas {{ 'fa-check' if key_info.allow_family else 'fa-times' }}"></i> Family
-                        </span>
-                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_insta else 'bg-gray-700 text-gray-400' }}">
-                            <i class="fas {{ 'fa-check' if key_info.allow_insta else 'fa-times' }}"></i> Instagram
-                        </span>
+                    <div class="flex flex-wrap gap-4 text-sm"> <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_phone else 'bg-gray-700 text-gray-400' }}"><i class="fas {{ 'fa-check' if key_info.allow_phone else 'fa-times' }}"></i> Phone</span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_vehicle else 'bg-gray-700 text-gray-400' }}"><i class="fas {{ 'fa-check' if key_info.allow_vehicle else 'fa-times' }}"></i> Vehicle</span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_aadhaar else 'bg-gray-700 text-gray-400' }}"><i class="fas {{ 'fa-check' if key_info.allow_aadhaar else 'fa-times' }}"></i> Aadhaar</span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_family else 'bg-gray-700 text-gray-400' }}"><i class="fas {{ 'fa-check' if key_info.allow_family else 'fa-times' }}"></i> Family</span>
+                        <span class="flex items-center gap-2 px-3 py-1 rounded-full {{ 'bg-green-800 text-green-300' if key_info.allow_insta else 'bg-gray-700 text-gray-400' }}"><i class="fas {{ 'fa-check' if key_info.allow_insta else 'fa-times' }}"></i> Instagram</span>
                     </div>
                 </div>
-
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-300 mb-3">Manage Devices</h3>
                     <div class="space-y-2">
@@ -116,9 +101,7 @@
                             {% for device in key_info.device_ids %}
                             <div class="flex justify-between items-center p-3 bg-gray-900 rounded-lg">
                                 <span class="font-mono text-sm text-gray-400">{{ device }}</span>
-                                <button class="btn btn-red btn-sm remove-device-btn" data-deviceid="{{ device }}">
-                                    <i class="fas fa-trash mr-1"></i> Remove
-                                </button>
+                                <button class="btn btn-red btn-sm remove-device-btn" data-deviceid="{{ device }}"><i class="fas fa-trash mr-1"></i> Remove</button>
                             </div>
                             {% endfor %}
                         {% else %}
@@ -126,7 +109,6 @@
                         {% endif %}
                     </div>
                 </div>
-
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-300 mb-3">Change PIN</h3>
                     <div class="flex gap-4">
@@ -134,7 +116,6 @@
                         <button id="change-pin-btn" class="btn btn-blue">Save PIN</button>
                     </div>
                 </div>
-
                 <div>
                     <h3 class="text-lg font-semibold text-gray-300 mb-3">Unlink Key</h3>
                     <p class="text-sm text-gray-400 mb-3">If you want to link a different key to this account, you must first unlink the current one.</p>
@@ -149,12 +130,9 @@
         function setLoading(button, isLoading, originalText = null) {
             if (!button) return;
             if (isLoading) {
-                button.disabled = true;
-                button.dataset.originalText = button.innerHTML;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                button.disabled = true; button.dataset.originalText = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             } else {
-                button.disabled = false;
-                button.innerHTML = originalText || button.dataset.originalText || 'Submit';
+                button.disabled = false; button.innerHTML = originalText || button.dataset.originalText || 'Submit';
             }
         }
         
@@ -166,52 +144,45 @@
         }
 
         async function apiRequest(endpoint, payload, button) {
-            let originalText = button.innerHTML;
-            setLoading(button, true);
+            let originalText = button ? button.innerHTML : '';
+            if (button) setLoading(button, true);
             try {
                 const response = await fetch(window.location.origin + endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                 });
                 const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.error || 'An unknown error occurred.');
-                }
+                if (!response.ok || !result.success) { throw new Error(result.error || 'An unknown error occurred.'); }
                 showMessage(result.message || 'Success!', false);
                 setTimeout(() => location.reload(), 1500); // Reload on success
             } catch (err) {
                 showMessage(err.message, true);
-                setLoading(button, false, originalText);
+                if (button) setLoading(button, false, originalText);
             }
         }
 
-        // --- Link Key View ---
+        // --- Event Listeners ---
+        // Need to check if elements exist before adding listeners
+        
         const linkKeyBtn = document.getElementById('link-key-btn');
         if (linkKeyBtn) {
             linkKeyBtn.addEventListener('click', (e) => {
-                const pin = document.getElementById('pin-input').value;
-                if (!pin) {
-                    showMessage('Please enter a PIN.', true);
-                    return;
-                }
+                const pinInput = document.getElementById('pin-input');
+                const pin = pinInput ? pinInput.value : '';
+                if (!pin) { showMessage('Please enter a PIN.', true); return; }
                 apiRequest('/api/account/link_key', { pin }, e.currentTarget);
             });
         }
 
-        // --- Manage Key View ---
         const changePinBtn = document.getElementById('change-pin-btn');
         if (changePinBtn) {
             changePinBtn.addEventListener('click', (e) => {
-                const newPin = document.getElementById('new-pin-input').value;
-                if (!newPin || newPin.length < 4) {
-                    showMessage('New PIN must be at least 4 characters.', true);
-                    return;
-                }
-                if (newPin === document.getElementById('key-pin-display').textContent) {
-                    showMessage('This is already your PIN.', true);
-                    return;
-                }
+                const newPinInput = document.getElementById('new-pin-input');
+                const keyPinDisplay = document.getElementById('key-pin-display');
+                const newPin = newPinInput ? newPinInput.value : '';
+                const currentPin = keyPinDisplay ? keyPinDisplay.textContent : '';
+                
+                if (!newPin || newPin.length < 4) { showMessage('New PIN must be at least 4 characters.', true); return; }
+                if (newPin === currentPin) { showMessage('This is already your PIN.', true); return; }
                 apiRequest('/api/account/change_pin', { new_pin: newPin }, e.currentTarget);
             });
         }
