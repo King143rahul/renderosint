@@ -2,12 +2,11 @@
 import os
 import datetime
 import json
-import requests # Still used for vahanx scraper
+import requests # Back to using requests
 import pymongo
 import random
 import string
-import asyncio
-import httpx
+# Removed asyncio and httpx
 from pymongo.errors import DuplicateKeyError
 from requests.exceptions import JSONDecodeError, ConnectTimeout, ReadTimeout
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, abort
@@ -35,8 +34,7 @@ ENABLE_ADMIN_PANEL = True
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "RAHUL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "KNOX")
 
-
-# --- Environment Variable Names ---
+# --- Corrected Environment Variable Names ---
 VEHICLE_API_1 = os.getenv("VEHICLE_API", "")
 PHONE_API_1 = os.getenv("NUMBER_API", "")
 AADHAAR_API = os.getenv("AADHAAR_API", "")
@@ -88,7 +86,6 @@ get_db_collections()
 
 # --- Helper Functions (Scraper, API calls, Logging) ---
 def get_details_from_vahanx(rc_number: str) -> dict:
-    # This is a SLOW, SYNCHRONOUS function. We must run it in a thread.
     try:
         ua = generate_user_agent()
         headers = {"User-Agent": ua}
@@ -109,23 +106,24 @@ def get_details_from_vahanx(rc_number: str) -> dict:
     except Exception as e:
         return {"error": f"Vahanx scraper failed: {str(e)}"}
 
-# --- ASYNC API CALLER ---
-async def async_safe_api_call(client, url: str, headers: dict) -> dict:
+# --- !! REVERTED to SYNC safe_api_call !! ---
+def safe_api_call(url: str, headers: dict, timeout=25) -> dict:
     if not url:
         return {"error": "API endpoint not configured."}
     try:
-        response = await client.get(url, timeout=25.0, headers=headers) # 25 second timeout
+        response = requests.get(url, timeout=timeout, headers=headers)
         response.raise_for_status()
         response_text = response.text
         return response.json()
-    except httpx.TimeoutException:
-        return {"error": "API call timed out."}
-    except httpx.RequestError as e:
-        return {"error": f"Network error: {str(e)}"}
-    except json.JSONDecodeError:
+    except JSONDecodeError:
         return {"error": f"API did not return valid JSON. Response: {response_text[:100]}..."}
+    except (ConnectTimeout, ReadTimeout):
+        return {"error": "API call timed out."}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Network error: {str(e)}"}
     except Exception as e:
         return {"error": f"Unknown error: {str(e)}"}
+# --- !! END OF REVERT !! ---
 
 
 def log_search(pin: str, lookup_type: str, number: str, device_id: str):
@@ -211,9 +209,9 @@ def get_public_config():
     return jsonify({"note": config.get("global_note") if config else None})
 
 
-# --- '/api/search' is now ASYNC ---
+# --- !! REVERTED to SYNC /api/search !! ---
 @app.route('/api/search', methods=['POST'])
-async def search(): # <-- Made function async
+def search(): # <-- No more async
     if KEYS_COLLECTION is None: return jsonify({"error": "Database connection is not established."}), 500
     data = request.json or {}
     lookup_type = data.get('type')
@@ -261,53 +259,37 @@ async def search(): # <-- Made function async
     api_data = {}
     
     try:
-        async with httpx.AsyncClient() as client:
+        # Calling APIs one-by-one (synchronously)
+        if lookup_type == "phone":
+            api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
+            # You can add more API calls here if you add new .env variables
             
-            if lookup_type == "phone":
-                tasks = [
-                    async_safe_api_call(client, PHONE_API_1.format(number), headers)
-                ]
-                results = await asyncio.gather(*tasks)
-                api_data['result_1'] = results[0]
-                
-            elif lookup_type == "vehicle":
-                # --- !! NEW EFFICIENCY FIX !! ---
-                # Run the async API call
-                async_task = async_safe_api_call(client, VEHICLE_API_1.format(number), headers)
-                
-                # Run the SLOW, SYNC scraper in a separate thread
-                # so it doesn't block the async event loop.
-                sync_task = asyncio.to_thread(get_details_from_vahanx, number)
-
-                # Wait for both to finish, concurrently
-                results = await asyncio.gather(async_task, sync_task)
-                
-                api_data['result_1'] = results[0] # Result from async API
-                api_data['result_2'] = results[1] # Result from sync scraper
-                # --- !! END OF FIX !! ---
-                
-            elif lookup_type == "aadhaar":
-                api_data = await async_safe_api_call(client, AADHAAR_API.format(number), headers)
-            elif lookup_type == "family":
-                api_data = await async_safe_api_call(client, AADHAAR_FAMILY_API.format(number), headers)
-            elif lookup_type == "insta":
-                api_data = await async_safe_api_call(client, INSTA_API.format(number), headers)
-            elif lookup_type == "pincode":
-                api_data = await async_safe_api_call(client, PINCODE_API.format(number), headers)
-            elif lookup_type == "gst":
-                api_data = await async_safe_api_call(client, GST_API.format(number), headers)
-            elif lookup_type == "ip":
-                api_data = await async_safe_api_call(client, IP_API.format(number), headers)
-            elif lookup_type == "imei":
-                api_data = await async_safe_api_call(client, IMEI_API.format(number), headers)
-            elif lookup_type == "pksim":
-                api_data = await async_safe_api_call(client, PK_SIM_API.format(number), headers)
-            elif lookup_type == "upi":
-                api_data = await async_safe_api_call(client, UPI_API.format(number), headers)
-            elif lookup_type == "ifsc":
-                api_data = await async_safe_api_call(client, IFSC_API.format(number), headers)
-            else:
-                return jsonify({"error": "Invalid lookup type"}), 400
+        elif lookup_type == "vehicle":
+            api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
+            api_data['result_2'] = get_details_from_vahanx(number) # Scraper
+            
+        elif lookup_type == "aadhaar":
+            api_data = safe_api_call(AADHAAR_API.format(number), headers)
+        elif lookup_type == "family":
+            api_data = safe_api_call(AADHAAR_FAMILY_API.format(number), headers)
+        elif lookup_type == "insta":
+            api_data = safe_api_call(INSTA_API.format(number), headers)
+        elif lookup_type == "pincode":
+            api_data = safe_api_call(PINCODE_API.format(number), headers)
+        elif lookup_type == "gst":
+            api_data = safe_api_call(GST_API.format(number), headers)
+        elif lookup_type == "ip":
+            api_data = safe_api_call(IP_API.format(number), headers)
+        elif lookup_type == "imei":
+            api_data = safe_api_call(IMEI_API.format(number), headers)
+        elif lookup_type == "pksim":
+            api_data = safe_api_call(PK_SIM_API.format(number), headers)
+        elif lookup_type == "upi":
+            api_data = safe_api_call(UPI_API.format(number), headers)
+        elif lookup_type == "ifsc":
+            api_data = safe_api_call(IFSC_API.format(number), headers)
+        else:
+            return jsonify({"error": "Invalid lookup type"}), 400
                 
     except Exception as e:
         return jsonify({"error": f"Failed to fetch data. Detail: {str(e)}"}), 502
@@ -318,11 +300,11 @@ async def search(): # <-- Made function async
     key_info = {"searches_left": key.get('limit_count', 10) - (searches_today + 1), "expiry_date": key.get('expiry') or "Never"}
     final_response = {**(api_data if isinstance(api_data, dict) else {"result": api_data}), "status": "success", "key_status": key_info, "dev": "RAHUL SHARMA"}
     return jsonify(final_response)
-# --- !! END OF ASYNC UPDATE !! ---
+# --- !! END OF REVERT !! ---
 
 
 # ----------------------------------------------------------------- #
-# --- Admin Panel Routes (No changes below this line) ---
+# --- Admin Panel Routes ---
 # ----------------------------------------------------------------- #
 if ENABLE_ADMIN_PANEL:
     def admin_required(f):
@@ -401,9 +383,10 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
+    # --- !! REVERTED to SYNC api_health !! ---
     @app.route('/admin/api_health', methods=['GET'])
     @admin_required
-    async def admin_api_health(): # <-- Made async
+    def admin_api_health(): # <-- No more async
         apis_to_check = [
             {"name": "Phone API (Byekam)", "url": PHONE_API_1, "query": "1234567890"},
             {"name": "Vehicle API (Byekam)", "url": VEHICLE_API_1, "query": "DL1CAB1234"},
@@ -421,31 +404,22 @@ if ENABLE_ADMIN_PANEL:
         results = []
         headers = {'User-Agent': generate_user_agent()}
         
-        async with httpx.AsyncClient() as client:
-            tasks = []
-            for api in apis_to_check:
-                if not api["url"]:
-                    results.append({"name": api["name"], "status": "Not Configured", "message": "URL is not set in .env"})
-                    continue
-                
-                test_url = api["url"].format(api["query"])
-                tasks.append(async_safe_api_call(client, test_url, headers))
-
-            api_results = await asyncio.gather(*tasks)
+        # Calling one-by-one
+        for api in apis_to_check:
+            if not api["url"]:
+                results.append({"name": api["name"], "status": "Not Configured", "message": "URL is not set in .env"})
+                continue
             
-            api_index = 0
-            for api in apis_to_check:
-                if not api["url"]:
-                    continue 
-                
-                res = api_results[api_index]
-                if "error" in res:
-                    results.append({"name": api["name"], "status": "Failed", "message": res["error"]})
-                else:
-                    results.append({"name": api["name"], "status": "OK", "message": "Success"})
-                api_index += 1
+            test_url = api["url"].format(api["query"])
+            res = safe_api_call(test_url, headers, timeout=10) # 10 sec timeout for health
+            
+            if "error" in res:
+                results.append({"name": api["name"], "status": "Failed", "message": res["error"]})
+            else:
+                results.append({"name": api["name"], "status": "OK", "message": "Success"})
                 
         return jsonify({"success": True, "results": results})
+    # --- !! END OF REVERT !! ---
 
     @app.route('/admin/keys', methods=['GET'])
     @admin_required
