@@ -202,12 +202,19 @@
             </div>
             <div>
                 <label class="text-sm text-gray-400">Permissions</label>
-                <div class="grid grid-cols-2 gap-2 mt-2">
+                <div class="grid grid-cols-3 gap-2 mt-2">
                     <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="perm-check"> <span>Phone</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="perm-check"> <span>Vehicle</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="perm-check"> <span>Aadhaar</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check"> <span>Family</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="perm-check"> <span>Instagram</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode" class="perm-check"> <span>Pincode</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst" class="perm-check"> <span>GST</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip" class="perm-check"> <span>IP Address</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei" class="perm-check"> <span>IMEI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim" class="perm-check"> <span>PK SIM</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi" class="perm-check"> <span>UPI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc" class="perm-check"> <span>IFSC</span></label>
                 </div>
             </div>
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
@@ -247,12 +254,19 @@
             </div>
             <div>
                 <label class="text-sm text-gray-400">Permissions (All keys)</label>
-                <div class="grid grid-cols-2 gap-2 mt-2">
+                <div class="grid grid-cols-3 gap-2 mt-2">
                     <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="batch-perm-check" checked> <span>Phone</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="batch-perm-check" checked> <span>Vehicle</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="batch-perm-check" checked> <span>Aadhaar</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="batch-perm-check" checked> <span>Family</span></label>
                     <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="batch-perm-check" checked> <span>Instagram</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode" class="batch-perm-check" checked> <span>Pincode</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst" class="batch-perm-check" checked> <span>GST</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip" class="batch-perm-check" checked> <span>IP Address</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei" class="batch-perm-check" checked> <span>IMEI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim" class="batch-perm-check" checked> <span>PK SIM</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi" class="batch-perm-check" checked> <span>UPI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc" class="batch-perm-check" checked> <span>IFSC</span></label>
                 </div>
             </div>
             <div id="batch-modal-error" class="text-red-400 text-center text-sm"></div>
@@ -493,7 +507,15 @@
                 if (key.allow_aadhaar) perms.push('Aad');
                 if (key.allow_family) perms.push('Fam');
                 if (key.allow_insta) perms.push('Insta');
-                let permDisplay = perms.length === 5 ? '<span class="font-bold text-green-500">All</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
+                if (key.allow_pincode) perms.push('Pin');
+                if (key.allow_gst) perms.push('GST');
+                if (key.allow_ip) perms.push('IP');
+                if (key.allow_imei) perms.push('IMEI');
+                if (key.allow_pksim) perms.push('PK');
+                if (key.allow_upi) perms.push('UPI');
+                if (key.allow_ifsc) perms.push('IFSC');
+
+                let permDisplay = perms.length === 12 ? '<span class="font-bold text-green-500">All</span>' : (perms.length === 0 ? '<span class="text-red-500">None</span>' : perms.join(', '));
 
                 const deviceCount = (key.device_ids || []).length;
                 const deviceLimit = key.device_limit || 1;
