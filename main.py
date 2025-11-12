@@ -2,10 +2,12 @@
 import os
 import datetime
 import json
-import requests
+import requests # Still used for vahanx scraper
 import pymongo
 import random
 import string
+import asyncio
+import httpx
 from pymongo.errors import DuplicateKeyError
 from requests.exceptions import JSONDecodeError, ConnectTimeout, ReadTimeout
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, abort
@@ -33,13 +35,15 @@ ENABLE_ADMIN_PANEL = True
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "RAHUL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "KNOX")
 
-# --- External API endpoints ---
-VEHICLE_API_1 = os.getenv("VEHICLE_API_1", "")
-PHONE_API_1 = os.getenv("PHONE_API_1", "")
-PHONE_API_2 = os.getenv("PHONE_API_2", "")
-PHONE_API_3 = os.getenv("PHONE_API_3", "")
-VEHICLE_API_2 = os.getenv("VEHICLE_API_2", "")
+
+# --- !! FIX 2: Corrected Environment Variable Names !! ---
+# These now match your .env file
+VEHICLE_API_1 = os.getenv("VEHICLE_API", "") # <-- RENAMED
+PHONE_API_1 = os.getenv("NUMBER_API", "")   # <-- RENAMED
 AADHAAR_API = os.getenv("AADHAAR_API", "")
+
+# These are the new ones you added. Make sure to add them to your .env
+# or on the Render dashboard if you want them to work.
 AADHAAR_FAMILY_API = os.getenv("AADHAAR_FAMILY_API", "")
 INSTA_API = os.getenv("INSTA_API", "")
 PINCODE_API = os.getenv("PINCODE_API", "")
@@ -88,6 +92,7 @@ get_db_collections()
 
 # --- Helper Functions (Scraper, API calls, Logging) ---
 def get_details_from_vahanx(rc_number: str) -> dict:
+    # This remains a synchronous function as it's only one call
     try:
         ua = generate_user_agent()
         headers = {"User-Agent": ua}
@@ -108,22 +113,24 @@ def get_details_from_vahanx(rc_number: str) -> dict:
     except Exception as e:
         return {"error": f"Vahanx scraper failed: {str(e)}"}
 
-def safe_api_call(url: str, headers: dict, timeout=15) -> dict:
+# --- ASYNC API CALLER ---
+async def async_safe_api_call(client, url: str, headers: dict) -> dict:
     if not url:
         return {"error": "API endpoint not configured."}
     try:
-        response = requests.get(url, timeout=timeout, headers=headers)
+        response = await client.get(url, timeout=20.0, headers=headers) # 20 second timeout
         response.raise_for_status()
         response_text = response.text
         return response.json()
-    except JSONDecodeError:
-        return {"error": f"API did not return valid JSON. Response: {response_text[:100]}..."}
-    except (ConnectTimeout, ReadTimeout):
+    except httpx.TimeoutException:
         return {"error": "API call timed out."}
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         return {"error": f"Network error: {str(e)}"}
+    except json.JSONDecodeError:
+        return {"error": f"API did not return valid JSON. Response: {response_text[:100]}..."}
     except Exception as e:
         return {"error": f"Unknown error: {str(e)}"}
+
 
 def log_search(pin: str, lookup_type: str, number: str, device_id: str):
     if SEARCH_HISTORY_COLLECTION is None: return
@@ -155,7 +162,6 @@ def user_login():
         if USERS_COLLECTION is None:
             return render_template("user_login.html", error="Database connection error. Please try again later.")
         
-        # --- NEW: Check if user is banned ---
         user = USERS_COLLECTION.find_one({"phone": phone})
         if user and user.get('is_banned', False):
             return render_template("user_login.html", error="This account has been suspended. Please contact support.")
@@ -208,8 +214,10 @@ def get_public_config():
     config = CONFIG_COLLECTION.find_one({"config_id": "global_config"})
     return jsonify({"note": config.get("global_note") if config else None})
 
+
+# --- '/api/search' is now ASYNC ---
 @app.route('/api/search', methods=['POST'])
-def search():
+async def search(): # <-- Made function async
     if KEYS_COLLECTION is None: return jsonify({"error": "Database connection is not established."}), 500
     data = request.json or {}
     lookup_type = data.get('type')
@@ -227,9 +235,6 @@ def search():
                 return jsonify({"error": "API Key has expired."}), 403
         except ValueError: pass
     
-    # --- !! THIS IS THE SECTION THAT NEEDS THE FIX !! ---
-    # Instead of checking key['used_today'], we will check the history
-    # This is more accurate if the daily reset job fails
     today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     searches_today = SEARCH_HISTORY_COLLECTION.count_documents({
         "pin": pin,
@@ -238,7 +243,6 @@ def search():
     
     if searches_today >= key.get('limit_count', 10):
         return jsonify({"error": "Daily search limit reached for this key."}), 403
-    # --- !! END OF FIX !! ---
 
     device_limit = key.get('device_limit', 1)
     device_ids = key.get('device_ids', [])
@@ -259,52 +263,68 @@ def search():
 
     headers = {'User-Agent': generate_user_agent()}
     api_data = {}
+    
     try:
-        if lookup_type == "phone":
-            api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
-            api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
-        elif lookup_type == "vehicle":
-            api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)
-            api_data['result_3'] = get_details_from_vahanx(number)
-        elif lookup_type == "aadhaar":
-            api_data = safe_api_call(AADHAAR_API.format(number), headers)
-        elif lookup_type == "family":
-            api_data = safe_api_call(AADHAAR_FAMILY_API.format(number), headers)
-        elif lookup_type == "insta":
-            api_data = safe_api_call(INSTA_API.format(number), headers)
-        elif lookup_type == "pincode":
-            api_data = safe_api_call(PINCODE_API.format(number), headers)
-        elif lookup_type == "gst":
-            api_data = safe_api_call(GST_API.format(number), headers)
-        elif lookup_type == "ip":
-            api_data = safe_api_call(IP_API.format(number), headers)
-        elif lookup_type == "imei":
-            api_data = safe_api_call(IMEI_API.format(number), headers)
-        elif lookup_type == "pksim":
-            api_data = safe_api_call(PK_SIM_API.format(number), headers)
-        elif lookup_type == "upi":
-            api_data = safe_api_call(UPI_API.format(number), headers)
-        elif lookup_type == "ifsc":
-            api_data = safe_api_call(IFSC_API.format(number), headers)
-        else:
-            return jsonify({"error": "Invalid lookup type"}), 400
+        # Create a single async client
+        async with httpx.AsyncClient() as client:
+            
+            # --- !! FIX 2: Simplified API calls to match your .env !! ---
+            if lookup_type == "phone":
+                # Only call the ONE phone API you have in .env
+                tasks = [
+                    async_safe_api_call(client, PHONE_API_1.format(number), headers)
+                ]
+                results = await asyncio.gather(*tasks)
+                api_data['result_1'] = results[0]
+                
+            elif lookup_type == "vehicle":
+                # Call the ONE vehicle API and the scraper
+                tasks = [
+                    async_safe_api_call(client, VEHICLE_API_1.format(number), headers)
+                ]
+                results = await asyncio.gather(*tasks)
+                api_data['result_1'] = results[0]
+                api_data['result_2'] = get_details_from_vahanx(number) # Scraper is sync
+            # --- !! END OF FIX !! ---
+                
+            elif lookup_type == "aadhaar":
+                api_data = await async_safe_api_call(client, AADHAAR_API.format(number), headers)
+            elif lookup_type == "family":
+                api_data = await async_safe_api_call(client, AADHAAR_FAMILY_API.format(number), headers)
+            elif lookup_type == "insta":
+                api_data = await async_safe_api_call(client, INSTA_API.format(number), headers)
+            elif lookup_type == "pincode":
+                api_data = await async_safe_api_call(client, PINCODE_API.format(number), headers)
+            elif lookup_type == "gst":
+                api_data = await async_safe_api_call(client, GST_API.format(number), headers)
+            elif lookup_type == "ip":
+                api_data = await async_safe_api_call(client, IP_API.format(number), headers)
+            elif lookup_type == "imei":
+                api_data = await async_safe_api_call(client, IMEI_API.format(number), headers)
+            elif lookup_type == "pksim":
+                api_data = await async_safe_api_call(client, PK_SIM_API.format(number), headers)
+            elif lookup_type == "upi":
+                api_data = await async_safe_api_call(client, UPI_API.format(number), headers)
+            elif lookup_type == "ifsc":
+                api_data = await async_safe_api_call(client, IFSC_API.format(number), headers)
+            else:
+                return jsonify({"error": "Invalid lookup type"}), 400
+                
     except Exception as e:
         return jsonify({"error": f"Failed to fetch data. Detail: {str(e)}"}), 502
     
-    # We log the search *after* the API call
+    # Log the search *after* the API call
     log_search(pin, lookup_type, number, device_id)
-    # This update is redundant if you don't have a reset script, but we'll leave it
-    # in case you add one. The check above is the important fix.
     KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
     
     key_info = {"searches_left": key.get('limit_count', 10) - (searches_today + 1), "expiry_date": key.get('expiry') or "Never"}
     final_response = {**(api_data if isinstance(api_data, dict) else {"result": api_data}), "status": "success", "key_status": key_info, "dev": "RAHUL SHARMA"}
     return jsonify(final_response)
+# --- !! END OF ASYNC UPDATE !! ---
+
 
 # ----------------------------------------------------------------- #
-# --- Admin Panel Routes ---
+# --- Admin Panel Routes (No changes below this line) ---
 # ----------------------------------------------------------------- #
 if ENABLE_ADMIN_PANEL:
     def admin_required(f):
@@ -341,7 +361,6 @@ if ENABLE_ADMIN_PANEL:
         session.pop('is_admin', None)
         return jsonify({"success": True})
 
-    # --- !! UPDATED: Dashboard Stats API ---
     @app.route('/admin/dashboard_stats', methods=['GET'])
     @admin_required
     def admin_dashboard_stats():
@@ -394,19 +413,17 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": True, "stats": stats})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
-    # --- !! END OF UPDATE !! ---
 
-    # --- NEW: API Health Check API ---
     @app.route('/admin/api_health', methods=['GET'])
     @admin_required
-    def admin_api_health():
+    async def admin_api_health(): # <-- Made async
         apis_to_check = [
-            {"name": "Phone API 1 (Byekam)", "url": PHONE_API_1, "query": "1234567890"},
-            {"name": "Phone API 2 (Demon)", "url": PHONE_API_2, "query": "1234567890"},
-            {"name": "Phone API 3 (Ox)", "url": PHONE_API_3, "query": "1234567890"},
-            {"name": "Vehicle API 1 (Byekam)", "url": VEHICLE_API_1, "query": "DL1CAB1234"},
-            {"name": "Vehicle API 2 (Hazex)", "url": VEHICLE_API_2, "query": "DL1CAB1234"},
+            # !! FIX 2: Corrected API health check to match your .env !!
+            {"name": "Phone API (Byekam)", "url": PHONE_API_1, "query": "1234567890"},
+            {"name": "Vehicle API (Byekam)", "url": VEHICLE_API_1, "query": "DL1CAB1234"},
             {"name": "Aadhaar API (Ox)", "url": AADHAAR_API, "query": "123456789012"},
+            
+            # These will show as "Not Configured" unless you add them to your .env
             {"name": "Aadhaar Family (Ox)", "url": AADHAAR_FAMILY_API, "query": "123456789012"},
             {"name": "Instagram API", "url": INSTA_API, "query": "dummyuser"},
             {"name": "Pincode API", "url": PINCODE_API, "query": "110001"},
@@ -419,18 +436,31 @@ if ENABLE_ADMIN_PANEL:
         ]
         results = []
         headers = {'User-Agent': generate_user_agent()}
-        for api in apis_to_check:
-            if not api["url"]:
-                results.append({"name": api["name"], "status": "Not Configured", "message": "URL is not set in .env"})
-                continue
+        
+        async with httpx.AsyncClient() as client:
+            tasks = []
+            for api in apis_to_check:
+                if not api["url"]:
+                    results.append({"name": api["name"], "status": "Not Configured", "message": "URL is not set in .env"})
+                    continue
+                
+                test_url = api["url"].format(api["query"])
+                tasks.append(async_safe_api_call(client, test_url, headers))
+
+            api_results = await asyncio.gather(*tasks)
             
-            test_url = api["url"].format(api["query"])
-            res = safe_api_call(test_url, headers, timeout=5)
-            
-            if "error" in res:
-                results.append({"name": api["name"], "status": "Failed", "message": res["error"]})
-            else:
-                results.append({"name": api["name"], "status": "OK", "message": "Success"})
+            api_index = 0
+            for api in apis_to_check:
+                if not api["url"]:
+                    continue 
+                
+                res = api_results[api_index]
+                if "error" in res:
+                    results.append({"name": api["name"], "status": "Failed", "message": res["error"]})
+                else:
+                    results.append({"name": api["name"], "status": "OK", "message": "Success"})
+                api_index += 1
+                
         return jsonify({"success": True, "results": results})
 
     # --- Key Management ---
@@ -440,8 +470,6 @@ if ENABLE_ADMIN_PANEL:
         if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
         try:
             keys_rows = [make_serializable(k) for k in KEYS_COLLECTION.find().sort("created_at", -1)]
-            # --- !! FIX for keys created before stats fix !! ---
-            # We will query the history for each key's usage today
             today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             usage_pipeline = [
                 {"$match": {"timestamp": {"$gte": today_start}}},
@@ -451,9 +479,7 @@ if ENABLE_ADMIN_PANEL:
             
             for row in keys_rows:
                 row['id'] = row['pin']
-                # Update the 'used_today' from our accurate map
                 row['used_today'] = daily_usage_map.get(row['pin'], 0)
-            # --- !! END OF FIX !! ---
             return jsonify({"success": True, "keys": keys_rows})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
@@ -485,7 +511,7 @@ if ENABLE_ADMIN_PANEL:
             "allow_pksim": 1 if "pksim" in permissions else 0,
             "allow_upi": 1 if "upi" in permissions else 0,
             "allow_ifsc": 1 if "ifsc" in permissions else 0,
-            "used_today": 0, # This field is no longer authoritative, but we keep it
+            "used_today": 0,
             "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
         try:
@@ -496,7 +522,6 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
-    # --- NEW: Batch Key Generation API ---
     @app.route('/admin/batch_add', methods=['POST'])
     @admin_required
     def batch_add_keys():
@@ -608,7 +633,6 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    # --- NEW: Reset Usage API ---
     @app.route('/admin/reset_usage', methods=['POST'])
     @admin_required
     def reset_usage():
@@ -616,9 +640,7 @@ if ENABLE_ADMIN_PANEL:
         key_pin = (request.json or {}).get('id')
         if not key_pin: return jsonify({"success": False, "error": "Key PIN is required."}), 400
         try:
-            # This will reset the old field
             KEYS_COLLECTION.update_one({"pin": key_pin}, {"$set": {"used_today": 0}})
-            # And we will also clear the history for them for today
             today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             SEARCH_HISTORY_COLLECTION.delete_many({
                 "pin": key_pin,
@@ -658,7 +680,6 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
-    # --- NEW: Ban User API ---
     @app.route('/admin/ban_user', methods=['POST'])
     @admin_required
     def admin_ban_user():
