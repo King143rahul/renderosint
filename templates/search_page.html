@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - OSINT by KNOX</title>
-    <script src="https://cdn/tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         body { font-family: 'Roboto Mono', monospace; background-color: #0d1117; color: #c9d1d9; }
@@ -13,22 +16,63 @@
         .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* --- CSS FIX 1 (UI Overflow) --- */
-        .result-key { color: #8b949e; width: 160px; display: inline-block; font-weight: 500; text-transform: capitalize; vertical-align: top; flex-shrink: 0; }
-        .result-value { 
-            display: inline-block; 
-            width: calc(100% - 165px); /* Original */
-            word-wrap: break-word;      /* Original */
-            white-space: pre-wrap;      /* Original */
-            flex-grow: 1;               /* Original */
-            
-            /* --- NEW: Force breaking long words --- */
-            overflow-wrap: break-word;
-            word-break: break-all; 
+        /* --- !! 2. NEW CSS FOR CLEAN RESULT CARDS (Fixes "looks bad" UI) !! --- */
+        .result-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
         }
-        /* --- !! BUG 2 FIX: Changed 'nowrap' to 'wrap' to fix mobile overflow !! --- */
-        .result-pair { display: flex; flex-wrap: wrap; align-items: flex-start; }
-        /* --- END CSS FIX --- */
+        .result-title {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+        }
+        .result-body {
+            padding: 1.25rem;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Single column on mobile */
+            gap: 0.75rem;
+        }
+        /* On larger screens, switch to two columns */
+        @media (min-width: 768px) {
+            .result-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .result-item {
+            background-color: #0d1117;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #2a3037;
+            word-break: break-word; /* Fixes overflow */
+        }
+        .result-key {
+            display: block;
+            font-size: 0.75rem;
+            color: #8b949e;
+            font-weight: 500;
+            text-transform: capitalize;
+            margin-bottom: 0.25rem;
+        }
+        .result-value {
+            font-size: 0.9rem;
+            color: #c9d1d9;
+            font-weight: 600;
+        }
+        .result-value.priority {
+            color: #58a6ff; /* Highlight important fields */
+        }
+        .result-value img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+        /* --- END OF NEW CSS --- */
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -180,7 +224,6 @@
             numberInput.focus();
         }
 
-        // --- !! BUG 4 FIX: Added 'telegram' and 'author' to junkKeys, 't.me/' to junkValues !! ---
         const junkKeys = [
             'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
             'developer', 'support', 'id', 'credit', 'author', 'result',
@@ -214,43 +257,40 @@
             return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
         };
 
-        function renderObject(data) {
-            let html = '<div class="space-y-2 pl-4 border-l border-gray-700">';
-            const allKeys = Object.keys(data);
-            const priorityKeys = ['name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'];
-            const sortedKeys = [...priorityKeys.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !priorityKeys.includes(k))];
+        const priorityKeys = ['name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'];
 
-            for (const key of sortedKeys) {
-                const value = data[key];
-                let valueString = String(value).toLowerCase();
-                let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
-                if (junkKeys.includes(key.toLowerCase()) || isJunkValue || value === null || value === undefined || value === 'NA' || value === 'Not Available' || value === '') {
-                    continue;
-                }
-                const label = prettyKey(key);
-                let valueHtml;
-                if (key.toLowerCase() === 'image' && typeof value === 'string' && value.startsWith('http')) {
-                    valueHtml = `<img src="${value}" alt="Vehicle Image" class="max-w-xs rounded mt-1">`;
-                } else if (typeof value === 'object' && !Array.isArray(value)) {
-                    valueHtml = renderObject(value);
-                } else if (Array.isArray(value)) {
-                    valueHtml = `<div class="pl-4">${value.map(item => typeof item === 'object' ? renderObject(item) : `<span class="block">${item}</span>`).join('')}</div>`;
-                } else {
-                    let displayValue = (value || '').toString()
-                        .replace(/!/g, ', ')        
-                        .replace(/\s*,\s*/g, ', ')  
-                        .replace(/^,\s*/, '')       
-                        .trim();                    
-                    let valueClass = (priorityKeys.includes(key)) ? 'text-cyan-400 font-bold' : '';
-                    valueHtml = `<span class="result-value ${valueClass}">${displayValue}</span>`;
-                }
-                html += `<div class="result-pair"><span class="result-key">${label}</span>: ${valueHtml}</div>`;
+        // Recursive function to build HTML for nested objects
+        function renderNestedObject(data) {
+            let html = '<div class="pl-4 mt-2 space-y-2 border-l border-gray-700">';
+            for (const [key, value] of Object.entries(data)) {
+                if (junkKeys.includes(key.toLowerCase())) continue;
+                
+                html += '<div>';
+                html += `<span class="result-key">${prettyKey(key)}</span>`;
+                html += buildValueHtml(value);
+                html += '</div>';
             }
             html += '</div>';
             return html;
         }
 
-        // --- UPDATED displayResults (FIX 2 & 3) ---
+        // Helper to build HTML for different value types
+        function buildValueHtml(value) {
+            let valueHtml = '';
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                valueHtml = renderNestedObject(value);
+            } else if (Array.isArray(value)) {
+                valueHtml = `<div class="pl-4 mt-2 space-y-2">${value.map(item => `<div>${buildValueHtml(item)}</div>`).join('')}</div>`;
+            } else {
+                let displayValue = (value || '').toString().replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
+                valueHtml = `<span class="result-value">${displayValue}</span>`;
+            }
+            return valueHtml;
+        }
+
+
+        // --- !! 3. COMPLETELY REWRITTEN 'displayResults' FUNCTION !! ---
+        // This function now builds clean HTML cards and fixes the UI/overflow issues.
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -268,7 +308,6 @@
             let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
             const resultId = 'result-text-0';
             
-            // --- FIX 3: Helper to sanitize error messages ---
             const sanitizeError = (errorMsg) => {
                 let msg = String(errorMsg);
                 if (msg.toLowerCase().includes('http') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
@@ -277,96 +316,123 @@
                 return msg;
             };
 
-            // --- !! BUG 3 FIX: Updated 'getPlainTextValue' to be recursive !! ---
-            // This stops the [object Object] error in the copied text
             const getPlainTextValue = (v) => {
                 if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-                    // Convert simple object to "key: val, key2: val2"
                     return Object.entries(v)
                         .map(([objK, objV]) => {
-                            // Filter out junk keys from nested objects too
                             if (junkKeys.includes(objK.toLowerCase())) return '';
-                            return `${prettyKey(objK)}: ${getPlainTextValue(objV)}`; // <-- RECURSIVE CALL
+                            return `${prettyKey(objK)}: ${getPlainTextValue(objV)}`;
                         })
-                        .filter(s => s) // Remove empty strings
+                        .filter(s => s)
                         .join(', ');
                 } else if (Array.isArray(v)) {
-                    // Convert array to "item1, item2"
-                    return v.map(item => getPlainTextValue(item)).join(', '); // <-- RECURSIVE CALL
+                    return v.map(item => getPlainTextValue(item)).join(', ');
                 }
-                // Convert string/number
                 return String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
             };
             
+            // This function creates the new card UI
+            const buildResultCard = (title, item) => {
+                let cardHtml = `<div class="result-card">`;
+                let cardBody = '';
+                let plainTextBody = '';
+                
+                if (item.error) {
+                    const cleanError = sanitizeError(item.error);
+                    cardHtml += `<div class="result-title text-red-400">${title} (Error)</div>`;
+                    cardBody = `<div class="result-body text-red-300">${cleanError}</div>`;
+                    plainTextBody = `Error: ${cleanError}\n`;
+                } else if (isDataEmpty(item)) {
+                    cardHtml += `<div class="result-title text-cyan-400">${title}</div>`;
+                    cardBody = `<div class="result-body text-gray-400">No information found from this source.</div>`;
+                    plainTextBody = `No information found.\n`;
+                } else {
+                    cardHtml += `<div class="result-title text-cyan-400">${title}</div>`;
+                    let gridHtml = '';
+                    
+                    // Sort keys to show priority ones first
+                    const allItemKeys = Object.keys(item);
+                    const sortedKeys = [...priorityKeys.filter(k => allItemKeys.includes(k)), ...allItemKeys.filter(k => !priorityKeys.includes(k))];
+
+                    for (const key of sortedKeys) {
+                        const value = item[key];
+                        let valueString = String(value).toLowerCase(); 
+                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                        
+                        if (v === null || v === 'NA' || v === '' || isJunk || junkKeys.includes(key.toLowerCase())) { 
+                            continue;
+                        }
+
+                        let cleanValue = getPlainTextValue(value);
+                        if (!cleanValue) continue;
+                        
+                        plainTextBody += `${prettyKey(key)}: ${cleanValue}\n`; 
+                        
+                        gridHtml += `<div class="result-item">`;
+                        gridHtml += `<span class="result-key">${prettyKey(key)}</span>`;
+                        
+                        // Handle images
+                        if (key.toLowerCase() === 'image' && typeof value === 'string' && value.startsWith('http')) {
+                            gridHtml += `<span class="result-value"><img src="${value}" alt="Vehicle Image"></span>`;
+                        } 
+                        // Handle nested objects/arrays
+                        else if (typeof value === 'object' && value !== null) {
+                             gridHtml += buildValueHtml(value);
+                        }
+                        // Handle plain text
+                        else {
+                            let valueClass = priorityKeys.includes(key) ? 'result-value priority' : 'result-value';
+                            gridHtml += `<span class="${valueClass}">${cleanValue}</span>`;
+                        }
+                        gridHtml += `</div>`;
+                    }
+                    cardBody = `<div class="result-body"><div class="result-grid">${gridHtml}</div></div>`;
+                }
+                
+                cardHtml += cardBody + `</div>`;
+                return {html: cardHtml, text: plainTextBody};
+            };
+            
+            // --- Main rendering logic ---
             if (SERVICE_TYPE === 'phone' || SERVICE_TYPE === 'vehicle') {
                 dataKeys.forEach((key, index) => {
                     const item = result[key];
                     if (typeof item !== 'object' || item === null) return;
-                    const title = item.error ? `Source ${index + 1} (Error)` : `Source ${index + 1}`;
-                    const titleColor = item.error ? 'text-red-400' : 'text-cyan-400';
-                    htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4"><div class="p-3 border-b border-gray-700"><span class="${titleColor} font-semibold">${title}</span></div><div class="p-4 space-y-2 text-sm text-gray-200">`;
                     
-                    if (item.error) {
-                        const cleanError = sanitizeError(item.error); // <-- Applied FIX 3
-                        htmlContent += `<div class="text-red-300">${cleanError}</div>`;
-                        plainTextContent += `\n--- ${title} ---\nError: ${cleanError}\n`;
-                    } else if (isDataEmpty(item)) {
-                        htmlContent += `<div class="text-gray-400">No information found from this source.</div>`;
-                        plainTextContent += `\n--- ${title} ---\nNo information found.\n`;
-                    } else {
-                        htmlContent += renderObject(item);
-                        plainTextContent += `\n--- ${title} ---\n`;
-                        Object.entries(item).forEach(([k, v]) => {
-                            let vString = String(v).toLowerCase(); 
-                            let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                            if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
-                                let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
-                                if (cleanValue) { // Only add if it's not empty
-                                    plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
-                                }
-                            }
-                        });
-                    }
-                    htmlContent += `</div></div>`;
+                    const title = `Source ${index + 1}`;
+                    const {html, text} = buildResultCard(title, item);
+                    htmlContent += html;
+                    plainTextContent += `\n--- ${title} ---\n${text}`;
                 });
             } else {
-                htmlContent += `<div class="bg-gray-900 rounded-lg border border-gray-700 mb-4">`;
-                if (result.error) {
-                    const cleanError = sanitizeError(result.error); // <-- Applied FIX 3
-                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-red-400 font-semibold">Result (Error)</span></div>`;
-                    htmlContent += `<div class="p-4 text-red-300">${cleanError}</div>`;
-                    plainTextContent += `--- Result (Error) ---\nError: ${result.error}\n`;
-                } else if (isDataEmpty(result)) { 
-                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
-                    htmlContent += `<div class="p-4 text-gray-400">No information found.</div>`;
-                    plainTextContent += `--- Result ---\nNo information found.\n`;
-                } else {
-                    htmlContent += `<div class="p-3 border-b border-gray-700"><span class="text-cyan-400 font-semibold">Result</span></div>`;
-                    htmlContent += `<div class="p-4 space-y-2 text-sm text-gray-200">`;
-                    htmlContent += renderObject(result);
-                    plainTextContent += `--- Result ---\n`;
-                    Object.entries(result).forEach(([k, v]) => {
-                        let vString = String(v).toLowerCase(); 
-                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
-                        if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
-                            let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
-                            if (cleanValue) { // Only add if it's not empty
-                                plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
-                            }
-                        }
-                    });
-                    htmlContent += `</div>`;
-                }
-                htmlContent += `</div>`;
+                // For single-source APIs like Aadhaar, IMEI, etc.
+                const title = `Result`;
+                const {html, text} = buildResultCard(title, result);
+                htmlContent += html;
+                plainTextContent += `--- Result ---\n${text}`;
             }
 
+            // --- Add Key Status & Action Buttons ---
             if (result.key_status) {
-                htmlContent += `<div class="text-sm text-gray-500 mt-6 flex flex-wrap justify-between gap-2"><span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span><span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span></div>`;
+                htmlContent += `<div class="text-sm text-gray-500 mt-2 flex flex-wrap justify-between gap-2"><span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span><span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span></div>`;
             }
-            htmlContent += `<div class="mt-4"><button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-copy mr-2"></i>Copy All Results</button><textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea></div>`;
-            htmlContent += `<button id="searchAgainBtn" class="w-full p-3 mt-4 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
+            
+            // Add buttons in a grid
+            htmlContent += `<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">`;
+            htmlContent += `<button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-copy mr-2"></i>Copy All Results</button>`;
+            
+            // -- !! NEW PDF BUTTON !! --
+            htmlContent += `<button id="download-pdf-btn" class="w-full p-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-file-pdf mr-2"></i>Download as PDF</button>`;
+            
+            htmlContent += `<button id="searchAgainBtn" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
+            htmlContent += `</div>`;
+            
+            // Add hidden textarea for copy/pdf
+            htmlContent += `<textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea>`;
+
             resultContainer.innerHTML = htmlContent;
 
+            // --- Attach ALL event listeners ---
             document.getElementById('copy-all-btn').addEventListener('click', (e) => {
                 const button = e.currentTarget; const textToCopy = document.getElementById(button.dataset.target).value;
                 navigator.clipboard.writeText(textToCopy).then(() => {
@@ -374,12 +440,56 @@
                     setTimeout(() => { button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy All Results'; button.classList.remove('bg-green-700', 'text-white'); }, 2000);
                 });
             });
+            
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
+            
+            // -- !! ATTACH LISTENER FOR PDF BUTTON !! --
+            document.getElementById('download-pdf-btn').addEventListener('click', (e) => handleDownloadPDF(e.currentTarget));
         }
-        // --- END UPDATED FUNCTION ---
+        // --- END OF REWRITTEN FUNCTION ---
+
+
+        // --- !! 4. NEW FUNCTION TO HANDLE PDF DOWNLOAD !! ---
+        function handleDownloadPDF(button) {
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+                alert("Error: PDF library not loaded.");
+                return;
+            }
+            
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+            button.disabled = true;
+
+            try {
+                const textToCopy = document.getElementById(button.dataset.target).value;
+                const doc = new jsPDF();
+                
+                doc.setFont("Helvetica", "normal");
+                doc.setFontSize(10);
+                
+                // Add text to PDF, handling line breaks
+                const lines = doc.splitTextToSize(textToCopy, 180); // 180mm width
+                doc.text(lines, 15, 15); // 15mm from left, 15mm from top
+                
+                const fileName = `osint_results_${numberInput.value || 'data'}.pdf`;
+                doc.save(fileName);
+                
+            } catch (e) {
+                console.error("PDF Generation Error:", e);
+                alert("An error occurred while generating the PDF.");
+            } finally {
+                // Restore button
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 1000);
+            }
+        }
+        // --- END OF NEW FUNCTION ---
+
 
         function displayError(msg) {
-            // Also sanitize errors displayed here
             let cleanMsg = String(msg);
             if (cleanMsg.toLowerCase().includes('http') || cleanMsg.toLowerCase().includes('network')) {
                 cleanMsg = 'An error occurred. Please try again.';
