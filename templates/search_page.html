@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - OSINT by KNOX</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn/tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -26,7 +26,8 @@
             overflow-wrap: break-word;
             word-break: break-all; 
         }
-        .result-pair { display: flex; flex-wrap: nowrap; align-items: flex-start; }
+        /* --- !! BUG 2 FIX: Changed 'nowrap' to 'wrap' to fix mobile overflow !! --- */
+        .result-pair { display: flex; flex-wrap: wrap; align-items: flex-start; }
         /* --- END CSS FIX --- */
     </style>
 </head>
@@ -179,15 +180,18 @@
             numberInput.focus();
         }
 
+        // --- !! BUG 4 FIX: Added 'telegram' and 'author' to junkKeys, 't.me/' to junkValues !! ---
         const junkKeys = [
             'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
-            'developer', 'support', 'id', 'credit', 'author', 'result'
+            'developer', 'support', 'id', 'credit', 'author', 'result',
+            'telegram', 'author'
         ];
         
         const junkValues = [
             '@oxmzoo', 
             '@HazexAPI on Telegram', 
-            '@MrHazex'
+            '@MrHazex',
+            't.me/'
         ];
 
         function isDataEmpty(data) {
@@ -273,16 +277,22 @@
                 return msg;
             };
 
-            // --- FIX 2: Helper to get plain text from objects/strings for copying ---
+            // --- !! BUG 3 FIX: Updated 'getPlainTextValue' to be recursive !! ---
+            // This stops the [object Object] error in the copied text
             const getPlainTextValue = (v) => {
                 if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
                     // Convert simple object to "key: val, key2: val2"
                     return Object.entries(v)
-                        .map(([objK, objV]) => `${prettyKey(objK)}: ${objV}`)
+                        .map(([objK, objV]) => {
+                            // Filter out junk keys from nested objects too
+                            if (junkKeys.includes(objK.toLowerCase())) return '';
+                            return `${prettyKey(objK)}: ${getPlainTextValue(objV)}`; // <-- RECURSIVE CALL
+                        })
+                        .filter(s => s) // Remove empty strings
                         .join(', ');
                 } else if (Array.isArray(v)) {
                     // Convert array to "item1, item2"
-                    return v.join(', ');
+                    return v.map(item => getPlainTextValue(item)).join(', '); // <-- RECURSIVE CALL
                 }
                 // Convert string/number
                 return String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
@@ -311,7 +321,9 @@
                             let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
                             if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
                                 let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
-                                plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                                if (cleanValue) { // Only add if it's not empty
+                                    plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                                }
                             }
                         });
                     }
@@ -338,7 +350,9 @@
                         let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
                         if (v !== null && v !== 'NA' && v !== '' && !isJunk && !junkKeys.includes(k.toLowerCase())) { 
                             let cleanValue = getPlainTextValue(v); // <-- Applied FIX 2
-                            plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                            if (cleanValue) { // Only add if it's not empty
+                                plainTextContent += `${prettyKey(k)}: ${cleanValue}\n`; 
+                            }
                         }
                     });
                     htmlContent += `</div>`;
