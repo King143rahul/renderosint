@@ -36,14 +36,10 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "RAHUL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "KNOX")
 
 
-# --- !! FIX 2: Corrected Environment Variable Names !! ---
-# These now match your .env file
-VEHICLE_API_1 = os.getenv("VEHICLE_API", "") # <-- RENAMED
-PHONE_API_1 = os.getenv("NUMBER_API", "")   # <-- RENAMED
+# --- Environment Variable Names ---
+VEHICLE_API_1 = os.getenv("VEHICLE_API", "")
+PHONE_API_1 = os.getenv("NUMBER_API", "")
 AADHAAR_API = os.getenv("AADHAAR_API", "")
-
-# These are the new ones you added. Make sure to add them to your .env
-# or on the Render dashboard if you want them to work.
 AADHAAR_FAMILY_API = os.getenv("AADHAAR_FAMILY_API", "")
 INSTA_API = os.getenv("INSTA_API", "")
 PINCODE_API = os.getenv("PINCODE_API", "")
@@ -73,7 +69,7 @@ def get_db_collections():
         return
     try:
         if DB_CLIENT is None:
-            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV4") # Updated appName
+            DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV4")
         db = DB_CLIENT.osint_db
         KEYS_COLLECTION = db.keys
         KEYS_COLLECTION.create_index("pin", unique=True)
@@ -92,12 +88,12 @@ get_db_collections()
 
 # --- Helper Functions (Scraper, API calls, Logging) ---
 def get_details_from_vahanx(rc_number: str) -> dict:
-    # This remains a synchronous function as it's only one call
+    # This is a SLOW, SYNCHRONOUS function. We must run it in a thread.
     try:
         ua = generate_user_agent()
         headers = {"User-Agent": ua}
         url = f"https://vahanx.in/rc-search/{rc_number.strip().upper()}"
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(url, headers=headers, timeout=25) # 25 sec timeout
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         data_labels = ["Owner Name", "Father's Name", "Owner Serial No", "Model Name", "Maker Model", "Vehicle Class", "Fuel Type", "Fuel Norms", "Registration Date", "Insurance Company", "Insurance No", "Insurance Expiry", "Insurance Upto", "Fitness Upto", "Tax Upto", "PUC No", "PUC Upto", "Financier Name", "Registered RTO", "Address", "City Name", "Phone"]
@@ -118,7 +114,7 @@ async def async_safe_api_call(client, url: str, headers: dict) -> dict:
     if not url:
         return {"error": "API endpoint not configured."}
     try:
-        response = await client.get(url, timeout=20.0, headers=headers) # 20 second timeout
+        response = await client.get(url, timeout=25.0, headers=headers) # 25 second timeout
         response.raise_for_status()
         response_text = response.text
         return response.json()
@@ -265,12 +261,9 @@ async def search(): # <-- Made function async
     api_data = {}
     
     try:
-        # Create a single async client
         async with httpx.AsyncClient() as client:
             
-            # --- !! FIX 2: Simplified API calls to match your .env !! ---
             if lookup_type == "phone":
-                # Only call the ONE phone API you have in .env
                 tasks = [
                     async_safe_api_call(client, PHONE_API_1.format(number), headers)
                 ]
@@ -278,14 +271,20 @@ async def search(): # <-- Made function async
                 api_data['result_1'] = results[0]
                 
             elif lookup_type == "vehicle":
-                # Call the ONE vehicle API and the scraper
-                tasks = [
-                    async_safe_api_call(client, VEHICLE_API_1.format(number), headers)
-                ]
-                results = await asyncio.gather(*tasks)
-                api_data['result_1'] = results[0]
-                api_data['result_2'] = get_details_from_vahanx(number) # Scraper is sync
-            # --- !! END OF FIX !! ---
+                # --- !! NEW EFFICIENCY FIX !! ---
+                # Run the async API call
+                async_task = async_safe_api_call(client, VEHICLE_API_1.format(number), headers)
+                
+                # Run the SLOW, SYNC scraper in a separate thread
+                # so it doesn't block the async event loop.
+                sync_task = asyncio.to_thread(get_details_from_vahanx, number)
+
+                # Wait for both to finish, concurrently
+                results = await asyncio.gather(async_task, sync_task)
+                
+                api_data['result_1'] = results[0] # Result from async API
+                api_data['result_2'] = results[1] # Result from sync scraper
+                # --- !! END OF FIX !! ---
                 
             elif lookup_type == "aadhaar":
                 api_data = await async_safe_api_call(client, AADHAAR_API.format(number), headers)
@@ -313,7 +312,6 @@ async def search(): # <-- Made function async
     except Exception as e:
         return jsonify({"error": f"Failed to fetch data. Detail: {str(e)}"}), 502
     
-    # Log the search *after* the API call
     log_search(pin, lookup_type, number, device_id)
     KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
     
@@ -337,7 +335,6 @@ if ENABLE_ADMIN_PANEL:
         return decorated_function
 
     def make_serializable(doc):
-        """Converts MongoDB docs (with ObjectId, datetime) to JSON-safe dict."""
         for key, val in doc.items():
             if isinstance(val, ObjectId):
                 doc[key] = str(val)
@@ -371,15 +368,10 @@ if ENABLE_ADMIN_PANEL:
             seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
             today_str = datetime.date.today().isoformat()
 
-            # 1. Total Searches Today (from history)
             total_searches_today = SEARCH_HISTORY_COLLECTION.count_documents({"timestamp": {"$gte": today_start}})
-            
-            # 2. Active Keys (from keys)
             active_keys = KEYS_COLLECTION.count_documents({
                 "$or": [{"expiry": {"$gte": today_str}}, {"expiry": None}]
             })
-            
-            # 3. Top 5 Keys (from history)
             top_keys_pipeline = [
                 {"$match": {"timestamp": {"$gte": today_start}}},
                 {"$group": {"_id": "$pin", "used_today": {"$sum": 1}}},
@@ -388,18 +380,13 @@ if ENABLE_ADMIN_PANEL:
                 {"$project": {"pin": "$_id", "used_today": 1, "_id": 0}}
             ]
             top_5_keys = list(SEARCH_HISTORY_COLLECTION.aggregate(top_keys_pipeline))
-            
-            # 4. User Stats
             total_users = USERS_COLLECTION.count_documents({})
-            
-            # 5. History Stats
             popular_services_pipeline = [
                 {"$match": {"timestamp": {"$gte": seven_days_ago}}},
                 {"$group": {"_id": "$lookup_type", "count": {"$sum": 1}}},
                 {"$sort": {"count": -1}}
             ]
             popular_services = list(SEARCH_HISTORY_COLLECTION.aggregate(popular_services_pipeline))
-            
             recent_searches = [make_serializable(s) for s in SEARCH_HISTORY_COLLECTION.find().sort("timestamp", -1).limit(10)]
             
             stats = {
@@ -418,12 +405,9 @@ if ENABLE_ADMIN_PANEL:
     @admin_required
     async def admin_api_health(): # <-- Made async
         apis_to_check = [
-            # !! FIX 2: Corrected API health check to match your .env !!
             {"name": "Phone API (Byekam)", "url": PHONE_API_1, "query": "1234567890"},
             {"name": "Vehicle API (Byekam)", "url": VEHICLE_API_1, "query": "DL1CAB1234"},
             {"name": "Aadhaar API (Ox)", "url": AADHAAR_API, "query": "123456789012"},
-            
-            # These will show as "Not Configured" unless you add them to your .env
             {"name": "Aadhaar Family (Ox)", "url": AADHAAR_FAMILY_API, "query": "123456789012"},
             {"name": "Instagram API", "url": INSTA_API, "query": "dummyuser"},
             {"name": "Pincode API", "url": PINCODE_API, "query": "110001"},
@@ -463,7 +447,6 @@ if ENABLE_ADMIN_PANEL:
                 
         return jsonify({"success": True, "results": results})
 
-    # --- Key Management ---
     @app.route('/admin/keys', methods=['GET'])
     @admin_required
     def admin_get_keys():
@@ -662,7 +645,6 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
-    # --- User Management ---
     @app.route('/admin/users', methods=['GET'])
     @admin_required
     def admin_get_users():
@@ -695,7 +677,6 @@ if ENABLE_ADMIN_PANEL:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
-    # --- Settings Management ---
     @app.route('/admin/note', methods=['GET', 'POST'])
     @admin_required
     def admin_global_note():
