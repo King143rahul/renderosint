@@ -16,7 +16,7 @@
         .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* --- !! 2. NEW CSS FOR CLEAN RESULT CARDS (Fixes "looks bad" UI) !! --- */
+        /* --- 2. NEW CSS FOR CLEAN RESULT CARDS (Fixes "looks bad" UI) --- */
         .result-card {
             background-color: #161b22;
             border: 1px solid #30363d;
@@ -289,8 +289,7 @@
         }
 
 
-        // --- !! 3. COMPLETELY REWRITTEN 'displayResults' FUNCTION !! ---
-        // This function now builds clean HTML cards and fixes the UI/overflow issues.
+        // --- 3. 'displayResults' FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -355,11 +354,13 @@
                     const sortedKeys = [...priorityKeys.filter(k => allItemKeys.includes(k)), ...allItemKeys.filter(k => !priorityKeys.includes(k))];
 
                     for (const key of sortedKeys) {
-                        const value = item[key];
+                        const value = item[key]; // <--- This is the variable
                         let valueString = String(value).toLowerCase(); 
-                        let isJunk = junkValues.some(junk => vString.includes(junk.toLowerCase()));
+                        let isJunk = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
                         
-                        if (v === null || v === 'NA' || v === '' || isJunk || junkKeys.includes(key.toLowerCase())) { 
+                        // --- !! THIS IS THE FIXED LINE !! ---
+                        // It now correctly uses 'value' instead of 'v'
+                        if (value === null || value === 'NA' || value === '' || isJunk || junkKeys.includes(key.toLowerCase())) { 
                             continue;
                         }
 
@@ -421,7 +422,7 @@
             htmlContent += `<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">`;
             htmlContent += `<button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-copy mr-2"></i>Copy All Results</button>`;
             
-            // -- !! NEW PDF BUTTON !! --
+            // -- PDF BUTTON --
             htmlContent += `<button id="download-pdf-btn" class="w-full p-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-file-pdf mr-2"></i>Download as PDF</button>`;
             
             htmlContent += `<button id="searchAgainBtn" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
@@ -443,13 +444,13 @@
             
             document.getElementById('searchAgainBtn').addEventListener('click', handleSearchAgain);
             
-            // -- !! ATTACH LISTENER FOR PDF BUTTON !! --
+            // -- ATTACH LISTENER FOR PDF BUTTON --
             document.getElementById('download-pdf-btn').addEventListener('click', (e) => handleDownloadPDF(e.currentTarget));
         }
-        // --- END OF REWRITTEN FUNCTION ---
+        // --- END OF FUNCTION ---
 
 
-        // --- !! 4. NEW FUNCTION TO HANDLE PDF DOWNLOAD !! ---
+        // --- 4. NEW FUNCTION TO HANDLE PDF DOWNLOAD ---
         function handleDownloadPDF(button) {
             const { jsPDF } = window.jspdf;
             if (!jsPDF) {
