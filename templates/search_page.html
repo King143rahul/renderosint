@@ -7,8 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         body { font-family: 'Roboto Mono', monospace; background-color: #0d1117; color: #c9d1d9; }
@@ -16,7 +14,8 @@
         .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* --- 2. NEW CSS FOR CLEAN RESULT CARDS (Fixes "looks bad" UI) --- */
+        /* --- !! 2. REMOVED .result-grid CSS (Replaced with Tailwind) !! --- */
+        
         .result-card {
             background-color: #161b22;
             border: 1px solid #30363d;
@@ -31,17 +30,6 @@
         }
         .result-body {
             padding: 1.25rem;
-        }
-        .result-grid {
-            display: grid;
-            grid-template-columns: 1fr; /* Single column on mobile */
-            gap: 0.75rem;
-        }
-        /* On larger screens, switch to two columns */
-        @media (min-width: 768px) {
-            .result-grid {
-                grid-template-columns: 1fr 1fr;
-            }
         }
         .result-item {
             background-color: #0d1117;
@@ -72,7 +60,7 @@
             border-radius: 6px;
             margin-top: 0.5rem;
         }
-        /* --- END OF NEW CSS --- */
+        /* --- END OF CSS CHANGES --- */
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -289,7 +277,7 @@
         }
 
 
-        // --- 3. 'displayResults' FUNCTION ---
+        // --- 'displayResults' FUNCTION ---
         function displayResults(result) {
             resultContainer.innerHTML = '';
             if (result.status !== 'success') {
@@ -354,12 +342,10 @@
                     const sortedKeys = [...priorityKeys.filter(k => allItemKeys.includes(k)), ...allItemKeys.filter(k => !priorityKeys.includes(k))];
 
                     for (const key of sortedKeys) {
-                        const value = item[key]; // <--- This is the variable
+                        const value = item[key];
                         let valueString = String(value).toLowerCase(); 
                         let isJunk = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
                         
-                        // --- !! THIS IS THE FIXED LINE !! ---
-                        // It now correctly uses 'value' instead of 'v'
                         if (value === null || value === 'NA' || value === '' || isJunk || junkKeys.includes(key.toLowerCase())) { 
                             continue;
                         }
@@ -387,7 +373,8 @@
                         }
                         gridHtml += `</div>`;
                     }
-                    cardBody = `<div class="result-body"><div class="result-grid">${gridHtml}</div></div>`;
+                    // --- !! 3. DESKTOP VIEW FIX: Replaced .result-grid with Tailwind classes !! ---
+                    cardBody = `<div class="result-body"><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${gridHtml}</div></div>`;
                 }
                 
                 cardHtml += cardBody + `</div>`;
@@ -450,44 +437,69 @@
         // --- END OF FUNCTION ---
 
 
-        // --- 4. NEW FUNCTION TO HANDLE PDF DOWNLOAD ---
-        function handleDownloadPDF(button) {
+        // --- !! 4. UPDATED PDF FUNCTION (LAZY LOADING) !! ---
+
+        // This function contains the actual PDF logic
+        function generatePDFLogic(button) {
             const { jsPDF } = window.jspdf;
             if (!jsPDF) {
-                alert("Error: PDF library not loaded.");
+                alert("Error: PDF library failed to load.");
+                button.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>Download as PDF';
+                button.disabled = false;
                 return;
             }
-            
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
-            button.disabled = true;
 
             try {
                 const textToCopy = document.getElementById(button.dataset.target).value;
                 const doc = new jsPDF();
-                
                 doc.setFont("Helvetica", "normal");
                 doc.setFontSize(10);
-                
-                // Add text to PDF, handling line breaks
-                const lines = doc.splitTextToSize(textToCopy, 180); // 180mm width
-                doc.text(lines, 15, 15); // 15mm from left, 15mm from top
-                
+                const lines = doc.splitTextToSize(textToCopy, 180);
+                doc.text(lines, 15, 15);
                 const fileName = `osint_results_${numberInput.value || 'data'}.pdf`;
                 doc.save(fileName);
-                
             } catch (e) {
                 console.error("PDF Generation Error:", e);
                 alert("An error occurred while generating the PDF.");
             } finally {
                 // Restore button
                 setTimeout(() => {
-                    button.innerHTML = originalText;
+                    button.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>Download as PDF';
                     button.disabled = false;
                 }, 1000);
             }
         }
-        // --- END OF NEW FUNCTION ---
+
+        // This new function will load the script on demand
+        function handleDownloadPDF(button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading Lib...';
+            button.disabled = true;
+
+            // Check if script is already loaded
+            if (window.jspdf) {
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+                generatePDFLogic(button);
+            } else {
+                // Script not loaded, let's load it
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                
+                script.onload = () => {
+                    console.log("jsPDF library loaded.");
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+                    generatePDFLogic(button);
+                };
+                script.onerror = () => {
+                    console.error("Failed to load jsPDF library.");
+                    alert("Failed to load PDF library. Please try again.");
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                };
+                document.head.appendChild(script);
+            }
+        }
+        // --- END OF NEW PDF FUNCTIONS ---
 
 
         function displayError(msg) {
