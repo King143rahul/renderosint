@@ -42,6 +42,13 @@ VEHICLE_API_2 = os.getenv("VEHICLE_API_2", "")
 AADHAAR_API = os.getenv("AADHAAR_API", "")
 AADHAAR_FAMILY_API = os.getenv("AADHAAR_FAMILY_API", "")
 INSTA_API = os.getenv("INSTA_API", "")
+PINCODE_API = os.getenv("PINCODE_API", "")
+GST_API = os.getenv("GST_API", "")
+IP_API = os.getenv("IP_API", "")
+IMEI_API = os.getenv("IMEI_API", "")
+PK_SIM_API = os.getenv("PK_SIM_API", "")
+UPI_API = os.getenv("UPI_API", "")
+IFSC_API = os.getenv("IFSC_API", "")
 # ----------------------------------------------------------------- #
 
 
@@ -63,8 +70,8 @@ def get_db_collections():
     try:
         if DB_CLIENT is None:
             DB_CLIENT = pymongo.MongoClient(MONGO_URI, appName="knoxV4") # Updated appName
-        db = DB_CLIENT.osint_db 
-        KEYS_COLLECTION = db.keys 
+        db = DB_CLIENT.osint_db
+        KEYS_COLLECTION = db.keys
         KEYS_COLLECTION.create_index("pin", unique=True)
         SEARCH_HISTORY_COLLECTION = db.history
         SEARCH_HISTORY_COLLECTION.create_index([("pin", 1), ("timestamp", -1)])
@@ -182,7 +189,14 @@ def search_page(service_type):
         "vehicle": {"title": "Vehicle Search", "placeholder": "Enter Vehicle Number", "icon_class": "fas fa-car"},
         "aadhaar": {"title": "Aadhaar Info", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-id-card"},
         "family": {"title": "Aadhaar to Family", "placeholder": "Enter Aadhaar Number", "icon_class": "fas fa-users"},
-        "insta": {"title": "Instagram Info", "placeholder": "Enter Instagram Username", "icon_class": "fab fa-instagram"}
+        "insta": {"title": "Instagram Info", "placeholder": "Enter Instagram Username", "icon_class": "fab fa-instagram"},
+        "pincode": {"title": "Pincode Info", "placeholder": "Enter Pincode", "icon_class": "fas fa-map-marker-alt"},
+        "gst": {"title": "GST Info", "placeholder": "Enter GST Number", "icon_class": "fas fa-file-invoice-dollar"},
+        "ip": {"title": "IP Address Info", "placeholder": "Enter IP Address", "icon_class": "fas fa-network-wired"},
+        "imei": {"title": "IMEI Info", "placeholder": "Enter IMEI Number", "icon_class": "fas fa-mobile"},
+        "pksim": {"title": "Pakistan SIM Info", "placeholder": "Enter Pakistan Number", "icon_class": "fas fa-sim-card"},
+        "upi": {"title": "UPI Info", "placeholder": "Enter UPI ID", "icon_class": "fas fa-rupee-sign"},
+        "ifsc": {"title": "IFSC Info", "placeholder": "Enter IFSC Code", "icon_class": "fas fa-university"}
     }
     config = page_config.get(service_type)
     if not config: return abort(404)
@@ -212,8 +226,19 @@ def search():
             if datetime.date.today() > datetime.datetime.fromisoformat(key['expiry']).date():
                 return jsonify({"error": "API Key has expired."}), 403
         except ValueError: pass
-    if key.get('used_today', 0) >= key.get('limit_count', 10):
+    
+    # --- !! THIS IS THE SECTION THAT NEEDS THE FIX !! ---
+    # Instead of checking key['used_today'], we will check the history
+    # This is more accurate if the daily reset job fails
+    today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    searches_today = SEARCH_HISTORY_COLLECTION.count_documents({
+        "pin": pin,
+        "timestamp": {"$gte": today_start}
+    })
+    
+    if searches_today >= key.get('limit_count', 10):
         return jsonify({"error": "Daily search limit reached for this key."}), 403
+    # --- !! END OF FIX !! ---
 
     device_limit = key.get('device_limit', 1)
     device_ids = key.get('device_ids', [])
@@ -223,7 +248,12 @@ def search():
         else:
             return jsonify({"error": f"Device limit ({device_limit}) reached for this key."}), 403
 
-    permission_map = {"phone": "allow_phone", "vehicle": "allow_vehicle", "aadhaar": "allow_aadhaar", "family": "allow_family", "insta": "allow_insta"}
+    permission_map = {
+        "phone": "allow_phone", "vehicle": "allow_vehicle", "aadhaar": "allow_aadhaar",
+        "family": "allow_family", "insta": "allow_insta", "pincode": "allow_pincode",
+        "gst": "allow_gst", "ip": "allow_ip", "imei": "allow_imei",
+        "pksim": "allow_pksim", "upi": "allow_upi", "ifsc": "allow_ifsc"
+    }
     if not key.get(permission_map.get(lookup_type)):
         return jsonify({"error": f"This key does not have permission for {lookup_type.title()} searches."}), 403
 
@@ -244,14 +274,32 @@ def search():
             api_data = safe_api_call(AADHAAR_FAMILY_API.format(number), headers)
         elif lookup_type == "insta":
             api_data = safe_api_call(INSTA_API.format(number), headers)
+        elif lookup_type == "pincode":
+            api_data = safe_api_call(PINCODE_API.format(number), headers)
+        elif lookup_type == "gst":
+            api_data = safe_api_call(GST_API.format(number), headers)
+        elif lookup_type == "ip":
+            api_data = safe_api_call(IP_API.format(number), headers)
+        elif lookup_type == "imei":
+            api_data = safe_api_call(IMEI_API.format(number), headers)
+        elif lookup_type == "pksim":
+            api_data = safe_api_call(PK_SIM_API.format(number), headers)
+        elif lookup_type == "upi":
+            api_data = safe_api_call(UPI_API.format(number), headers)
+        elif lookup_type == "ifsc":
+            api_data = safe_api_call(IFSC_API.format(number), headers)
         else:
             return jsonify({"error": "Invalid lookup type"}), 400
     except Exception as e:
         return jsonify({"error": f"Failed to fetch data. Detail: {str(e)}"}), 502
     
-    KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
+    # We log the search *after* the API call
     log_search(pin, lookup_type, number, device_id)
-    key_info = {"searches_left": key.get('limit_count', 10) - key.get('used_today', 0) - 1, "expiry_date": key.get('expiry') or "Never"}
+    # This update is redundant if you don't have a reset script, but we'll leave it
+    # in case you add one. The check above is the important fix.
+    KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
+    
+    key_info = {"searches_left": key.get('limit_count', 10) - (searches_today + 1), "expiry_date": key.get('expiry') or "Never"}
     final_response = {**(api_data if isinstance(api_data, dict) else {"result": api_data}), "status": "success", "key_status": key_info, "dev": "RAHUL SHARMA"}
     return jsonify(final_response)
 
@@ -293,26 +341,39 @@ if ENABLE_ADMIN_PANEL:
         session.pop('is_admin', None)
         return jsonify({"success": True})
 
-    # --- NEW: Dashboard Stats API ---
+    # --- !! UPDATED: Dashboard Stats API ---
     @app.route('/admin/dashboard_stats', methods=['GET'])
     @admin_required
     def admin_dashboard_stats():
         if not all([KEYS_COLLECTION, USERS_COLLECTION, SEARCH_HISTORY_COLLECTION]):
             return jsonify({"success": False, "error": "Database not configured."}), 500
         try:
-            # 1. Key Stats
-            total_searches_today = sum(k.get('used_today', 0) for k in KEYS_COLLECTION.find({}, {"used_today": 1}))
+            today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
             today_str = datetime.date.today().isoformat()
+
+            # 1. Total Searches Today (from history)
+            total_searches_today = SEARCH_HISTORY_COLLECTION.count_documents({"timestamp": {"$gte": today_start}})
+            
+            # 2. Active Keys (from keys)
             active_keys = KEYS_COLLECTION.count_documents({
                 "$or": [{"expiry": {"$gte": today_str}}, {"expiry": None}]
             })
-            top_5_keys = list(KEYS_COLLECTION.find({}, {"pin": 1, "used_today": 1, "_id": 0}).sort("used_today", -1).limit(5))
             
-            # 2. User Stats
+            # 3. Top 5 Keys (from history)
+            top_keys_pipeline = [
+                {"$match": {"timestamp": {"$gte": today_start}}},
+                {"$group": {"_id": "$pin", "used_today": {"$sum": 1}}},
+                {"$sort": {"used_today": -1}},
+                {"$limit": 5},
+                {"$project": {"pin": "$_id", "used_today": 1, "_id": 0}}
+            ]
+            top_5_keys = list(SEARCH_HISTORY_COLLECTION.aggregate(top_keys_pipeline))
+            
+            # 4. User Stats
             total_users = USERS_COLLECTION.count_documents({})
             
-            # 3. History Stats
-            seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+            # 5. History Stats
             popular_services_pipeline = [
                 {"$match": {"timestamp": {"$gte": seven_days_ago}}},
                 {"$group": {"_id": "$lookup_type", "count": {"$sum": 1}}},
@@ -333,6 +394,7 @@ if ENABLE_ADMIN_PANEL:
             return jsonify({"success": True, "stats": stats})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
+    # --- !! END OF UPDATE !! ---
 
     # --- NEW: API Health Check API ---
     @app.route('/admin/api_health', methods=['GET'])
@@ -346,7 +408,14 @@ if ENABLE_ADMIN_PANEL:
             {"name": "Vehicle API 2 (Hazex)", "url": VEHICLE_API_2, "query": "DL1CAB1234"},
             {"name": "Aadhaar API (Ox)", "url": AADHAAR_API, "query": "123456789012"},
             {"name": "Aadhaar Family (Ox)", "url": AADHAAR_FAMILY_API, "query": "123456789012"},
-            {"name": "Instagram API", "url": INSTA_API, "query": "dummyuser"}
+            {"name": "Instagram API", "url": INSTA_API, "query": "dummyuser"},
+            {"name": "Pincode API", "url": PINCODE_API, "query": "110001"},
+            {"name": "GST API", "url": GST_API, "query": "27AACCT6843P1Z5"},
+            {"name": "IP API", "url": IP_API, "query": "8.8.8.8"},
+            {"name": "IMEI API", "url": IMEI_API, "query": "353535053535350"},
+            {"name": "PK SIM API", "url": PK_SIM_API, "query": "3001234567"},
+            {"name": "UPI API", "url": UPI_API, "query": "test@upi"},
+            {"name": "IFSC API", "url": IFSC_API, "query": "SBIN0000691"}
         ]
         results = []
         headers = {'User-Agent': generate_user_agent()}
@@ -371,7 +440,20 @@ if ENABLE_ADMIN_PANEL:
         if KEYS_COLLECTION is None: return jsonify({"success": False, "error": "Database not configured."}), 500
         try:
             keys_rows = [make_serializable(k) for k in KEYS_COLLECTION.find().sort("created_at", -1)]
-            for row in keys_rows: row['id'] = row['pin']
+            # --- !! FIX for keys created before stats fix !! ---
+            # We will query the history for each key's usage today
+            today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            usage_pipeline = [
+                {"$match": {"timestamp": {"$gte": today_start}}},
+                {"$group": {"_id": "$pin", "count": {"$sum": 1}}}
+            ]
+            daily_usage_map = {item['_id']: item['count'] for item in SEARCH_HISTORY_COLLECTION.aggregate(usage_pipeline)}
+            
+            for row in keys_rows:
+                row['id'] = row['pin']
+                # Update the 'used_today' from our accurate map
+                row['used_today'] = daily_usage_map.get(row['pin'], 0)
+            # --- !! END OF FIX !! ---
             return jsonify({"success": True, "keys": keys_rows})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
@@ -384,18 +466,26 @@ if ENABLE_ADMIN_PANEL:
         pin = data.get('pin')
         if not pin: return jsonify({"success": False, "error": "PIN cannot be empty."}), 400
         
+        permissions = data.get('permissions', [])
         key_doc = {
             "pin": pin,
             "limit_count": int(data.get('limit', 10)),
             "expiry": data.get('expiry') if data.get('expiry') else None,
             "device_limit": int(data.get('device_limit', 1)),
             "device_ids": [],
-            "allow_phone": 1 if "phone" in data.get('permissions', []) else 0,
-            "allow_vehicle": 1 if "vehicle" in data.get('permissions', []) else 0,
-            "allow_aadhaar": 1 if "aadhaar" in data.get('permissions', []) else 0,
-            "allow_family": 1 if "family" in data.get('permissions', []) else 0,
-            "allow_insta": 1 if "insta" in data.get('permissions', []) else 0,
-            "used_today": 0,
+            "allow_phone": 1 if "phone" in permissions else 0,
+            "allow_vehicle": 1 if "vehicle" in permissions else 0,
+            "allow_aadhaar": 1 if "aadhaar" in permissions else 0,
+            "allow_family": 1 if "family" in permissions else 0,
+            "allow_insta": 1 if "insta" in permissions else 0,
+            "allow_pincode": 1 if "pincode" in permissions else 0,
+            "allow_gst": 1 if "gst" in permissions else 0,
+            "allow_ip": 1 if "ip" in permissions else 0,
+            "allow_imei": 1 if "imei" in permissions else 0,
+            "allow_pksim": 1 if "pksim" in permissions else 0,
+            "allow_upi": 1 if "upi" in permissions else 0,
+            "allow_ifsc": 1 if "ifsc" in permissions else 0,
+            "used_today": 0, # This field is no longer authoritative, but we keep it
             "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
         try:
@@ -417,16 +507,24 @@ if ENABLE_ADMIN_PANEL:
         if count <= 0 or count > 100:
             return jsonify({"success": False, "error": "Count must be between 1 and 100."}), 400
         
+        permissions = data.get('permissions', [])
         base_doc = {
             "limit_count": int(data.get('limit', 10)),
             "expiry": data.get('expiry') if data.get('expiry') else None,
             "device_limit": int(data.get('device_limit', 1)),
             "device_ids": [],
-            "allow_phone": 1 if "phone" in data.get('permissions', []) else 0,
-            "allow_vehicle": 1 if "vehicle" in data.get('permissions', []) else 0,
-            "allow_aadhaar": 1 if "aadhaar" in data.get('permissions', []) else 0,
-            "allow_family": 1 if "family" in data.get('permissions', []) else 0,
-            "allow_insta": 1 if "insta" in data.get('permissions', []) else 0,
+            "allow_phone": 1 if "phone" in permissions else 0,
+            "allow_vehicle": 1 if "vehicle" in permissions else 0,
+            "allow_aadhaar": 1 if "aadhaar" in permissions else 0,
+            "allow_family": 1 if "family" in permissions else 0,
+            "allow_insta": 1 if "insta" in permissions else 0,
+            "allow_pincode": 1 if "pincode" in permissions else 0,
+            "allow_gst": 1 if "gst" in permissions else 0,
+            "allow_ip": 1 if "ip" in permissions else 0,
+            "allow_imei": 1 if "imei" in permissions else 0,
+            "allow_pksim": 1 if "pksim" in permissions else 0,
+            "allow_upi": 1 if "upi" in permissions else 0,
+            "allow_ifsc": 1 if "ifsc" in permissions else 0,
             "used_today": 0,
             "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
@@ -467,6 +565,13 @@ if ENABLE_ADMIN_PANEL:
             update_doc["$set"]["allow_aadhaar"] = 1 if "aadhaar" in perms else 0
             update_doc["$set"]["allow_family"] = 1 if "family" in perms else 0
             update_doc["$set"]["allow_insta"] = 1 if "insta" in perms else 0
+            update_doc["$set"]["allow_pincode"] = 1 if "pincode" in perms else 0
+            update_doc["$set"]["allow_gst"] = 1 if "gst" in perms else 0
+            update_doc["$set"]["allow_ip"] = 1 if "ip" in perms else 0
+            update_doc["$set"]["allow_imei"] = 1 if "imei" in perms else 0
+            update_doc["$set"]["allow_pksim"] = 1 if "pksim" in perms else 0
+            update_doc["$set"]["allow_upi"] = 1 if "upi" in perms else 0
+            update_doc["$set"]["allow_ifsc"] = 1 if "ifsc" in perms else 0
         if not update_doc["$set"]: return jsonify({"success": False, "error": "No valid fields to update."}), 400
         
         try:
@@ -511,8 +616,14 @@ if ENABLE_ADMIN_PANEL:
         key_pin = (request.json or {}).get('id')
         if not key_pin: return jsonify({"success": False, "error": "Key PIN is required."}), 400
         try:
-            result = KEYS_COLLECTION.update_one({"pin": key_pin}, {"$set": {"used_today": 0}})
-            if result.matched_count == 0: return jsonify({"success": False, "error": "Key not found."}), 404
+            # This will reset the old field
+            KEYS_COLLECTION.update_one({"pin": key_pin}, {"$set": {"used_today": 0}})
+            # And we will also clear the history for them for today
+            today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            SEARCH_HISTORY_COLLECTION.delete_many({
+                "pin": key_pin,
+                "timestamp": {"$gte": today_start}
+            })
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
