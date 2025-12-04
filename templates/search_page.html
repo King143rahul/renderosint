@@ -361,6 +361,16 @@
         function displayResults(data) {
             resultContainer.innerHTML = '';
 
+            // Show Mock Warning
+            if (data.is_mock) {
+                resultContainer.innerHTML += `
+                    <div class="mb-6 p-4 bg-yellow-600/20 border border-yellow-600/40 rounded-xl text-center">
+                        <p class="text-yellow-200 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> DEMO MODE</p>
+                        <p class="text-yellow-200/70 text-sm">Database not configured. Showing mock results.</p>
+                    </div>
+                `;
+            }
+
             // 1. Handle Protected Sources (Data Leak Fix)
             if (data.protected_sources && data.protected_sources.length > 0) {
                 const protectedHtml = data.protected_sources.map(src => `

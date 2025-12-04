@@ -210,7 +210,7 @@ def get_public_config():
 
 @app.route('/api/search', methods=['POST'])
 def search():
-    if KEYS_COLLECTION is None: return jsonify({"error": "Database connection is not established."}), 500
+    # if KEYS_COLLECTION is None: return jsonify({"error": "Database connection is not established."}), 500
     data = request.json or {}
     lookup_type = data.get('type')
     number = data.get('number', '').strip()
@@ -218,6 +218,52 @@ def search():
     device_id = data.get('deviceId')
     if not all([lookup_type, number, pin, device_id]):
         return jsonify({"error": "Missing required fields."}), 400
+
+    # --- Mock Data Fallback for Search ---
+    if KEYS_COLLECTION is None:
+        # Return mock data for testing purposes
+        import random
+        if lookup_type == "phone":
+            mock_response = {
+                "owner": "John Doe (Mock)",
+                "results": [
+                    {
+                        "id": 1,
+                        "mobile": number,
+                        "name": "John Doe",
+                        "address": "123 Mock Street, Demo City",
+                        "carrier": "MockTel",
+                        "email": "john.doe@example.com"
+                    },
+                    {
+                        "id": 2,
+                        "mobile": number,
+                        "name": "J. Doe",
+                        "address": "456 Another Rd, Test Town"
+                    }
+                ],
+                "protected_sources": [
+                    {"source": "Source 3", "message": "Protected Content (Requires Browser)", "link": "http://meowmeow.rf.gd/test"}
+                ],
+                "_meta": {
+                    "search_term": number,
+                    "total_sources_scanned": 3,
+                    "found_id_number": "Not Found"
+                },
+                "status": "success",
+                "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
+                "dev": "RAHUL SHARMA",
+                "is_mock": True
+            }
+            return jsonify(mock_response)
+        else:
+            return jsonify({
+                "result": {"Message": "Mock data for non-phone search not implemented yet."},
+                "status": "success",
+                "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
+                "dev": "RAHUL SHARMA",
+                "is_mock": True
+            })
 
     key = KEYS_COLLECTION.find_one({"pin": pin})
     if not key: return jsonify({"error": "Invalid API Key"}), 401
