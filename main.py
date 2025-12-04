@@ -258,12 +258,115 @@ def search():
         return jsonify({"error": f"This key does not have permission for {lookup_type.title()} searches."}), 403
 
     headers = {'User-Agent': generate_user_agent()}
+    # --- Data Processing Helper ---
+    def process_phone_data(raw_data_list, search_term):
+        processed_results = []
+        protected_sources = []
+        
+        # Priority keys for extraction
+        keys_map = {
+            "name": ["name", "owner_name", "owner"],
+            "mobile": ["mobile", "phone", "number"],
+            "father_name": ["father_name", "fname", "father"],
+            "address": ["address", "location", "addr"],
+            "alt_mobile": ["alt_mobile", "alt_number", "alternate_number"],
+            "circle": ["circle", "carrier", "operator"],
+            "id_number": ["id_number", "id_proof", "document_id", "voter_id", "aadhaar"],
+            "email": ["email", "mail"]
+        }
+
+        def extract_value(data, keys):
+            for k in keys:
+                val = data.get(k)
+                if val: return str(val).strip()
+            return ""
+
+        for source_idx, data in enumerate(raw_data_list):
+            if not isinstance(data, dict) or "error" in data: continue
+            
+            # Check for leaks in the entire data object
+            is_leaked = False
+            clean_data = {}
+            
+            for k, v in data.items():
+                val_str = str(v)
+                if "meowmeow.rf.gd" in val_str:
+                    is_leaked = True
+                    protected_sources.append({
+                        "source": f"Source {source_idx + 1}",
+                        "message": "Protected Content (Requires Browser)",
+                        "link": val_str # We keep the link here for the protected section
+                    })
+                else:
+                    clean_data[k] = v
+            
+            if is_leaked:
+                # If leaked, we might still want to extract safe data if available, 
+                # but for now let's assume the user wants to segregate this source.
+                # If there is other data in clean_data, we can use it.
+                pass
+
+            # Extract standardized fields
+            entry = {
+                "id": source_idx + 1,
+                "mobile": extract_value(data, keys_map["mobile"]) or search_term,
+                "name": extract_value(data, keys_map["name"]),
+                "father_name": extract_value(data, keys_map["father_name"]),
+                "address": extract_value(data, keys_map["address"]),
+                "alt_mobile": extract_value(data, keys_map["alt_mobile"]),
+                "circle": extract_value(data, keys_map["circle"]),
+                "id_number": extract_value(data, keys_map["id_number"]),
+                "email": extract_value(data, keys_map["email"])
+            }
+            
+            # Only add if we have at least a name or address or id_number
+            if entry["name"] or entry["address"] or entry["id_number"]:
+                processed_results.append(entry)
+
+        # Determine "Owner" (best name match)
+        owner_name = "Unknown"
+        for res in processed_results:
+            if res["name"]:
+                owner_name = res["name"]
+                break
+        
+        return {
+            "owner": owner_name,
+            "results": processed_results,
+            "protected_sources": protected_sources,
+            "_meta": {
+                "search_term": search_term,
+                "total_sources_scanned": len(raw_data_list),
+                "found_id_number": next((r["id_number"] for r in processed_results if r["id_number"]), "Not Found")
+            }
+        }
+
     api_data = {}
     try:
         if lookup_type == "phone":
-            api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
-            # api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
-            # api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
+            # Collect all raw results first
+            raw_results = []
+            r1 = safe_api_call(PHONE_API_1.format(number), headers)
+            if r1: raw_results.append(r1)
+            # r2 = safe_api_call(PHONE_API_2.format(number), headers)
+            # if r2: raw_results.append(r2)
+            # r3 = safe_api_call(PHONE_API_3.format(number), headers)
+            # if r3: raw_results.append(r3)
+            
+            # Process them
+            final_response = process_phone_data(raw_results, number)
+            
+            # Add key status
+            key_info = {"searches_left": key.get('limit_count', 10) - (searches_today + 1), "expiry_date": key.get('expiry') or "Never"}
+            final_response["status"] = "success"
+            final_response["key_status"] = key_info
+            final_response["dev"] = "RAHUL SHARMA"
+            
+            # Log and return
+            log_search(pin, lookup_type, number, device_id)
+            KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
+            return jsonify(final_response)
+
         elif lookup_type == "vehicle":
             api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
             # api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)
@@ -345,8 +448,23 @@ if ENABLE_ADMIN_PANEL:
     @app.route('/admin/dashboard_stats', methods=['GET'])
     @admin_required
     def admin_dashboard_stats():
+        # --- Mock Data Fallback if DB is missing ---
         if not all([KEYS_COLLECTION, USERS_COLLECTION, SEARCH_HISTORY_COLLECTION]):
-            return jsonify({"success": False, "error": "Database not configured."}), 500
+            import random
+            mock_stats = {
+                "total_searches_today": random.randint(100, 500),
+                "active_keys": random.randint(10, 50),
+                "total_users": random.randint(50, 200),
+                "top_5_keys": [{"pin": f"DEMO-{i}", "used_today": random.randint(10, 50)} for i in range(1, 6)],
+                "popular_services": [{"_id": s, "count": random.randint(20, 100)} for s in ["Phone", "Vehicle", "Aadhaar", "Instagram"]],
+                "recent_searches": [
+                    {"timestamp": datetime.datetime.now().isoformat(), "pin": "DEMO-KEY", "lookup_type": "phone", "query": "9876543210"}
+                    for _ in range(5)
+                ],
+                "is_mock": True
+            }
+            return jsonify({"success": True, "stats": mock_stats})
+            
         try:
             today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
@@ -389,7 +507,8 @@ if ENABLE_ADMIN_PANEL:
                 "total_users": total_users,
                 "top_5_keys": top_5_keys,
                 "popular_services": popular_services,
-                "recent_searches": recent_searches
+                "recent_searches": recent_searches,
+                "is_mock": False
             }
             return jsonify({"success": True, "stats": stats})
         except Exception as e:
