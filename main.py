@@ -262,11 +262,11 @@ def search():
     try:
         if lookup_type == "phone":
             api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
-            api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
+            # api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
+            # api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
         elif lookup_type == "vehicle":
             api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)
+            # api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)
             api_data['result_3'] = get_details_from_vahanx(number)
         elif lookup_type == "aadhaar":
             api_data = safe_api_call(AADHAAR_API.format(number), headers)
