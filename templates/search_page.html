@@ -452,20 +452,37 @@
                     `;
                 });
             }
-            // 3. Handle Other Services (Legacy Object Structure)
-            else if (SERVICE_TYPE !== 'phone') {
-                // Reuse logic for other services but with new styling
-                // (Simplified for brevity, assuming similar object structure as before but wrapped in new UI)
+            // 3. Handle Other Services (Generic Pretty Print)
+            else {
+                const renderValue = (val) => {
+                    if (val === null || val === undefined) return '<span class="text-gray-600 italic">N/A</span>';
+                    if (typeof val === 'boolean') return val ? '<span class="text-green-400 font-bold">Yes</span>' : '<span class="text-red-400 font-bold">No</span>';
+                    if (typeof val === 'object') return renderObject(val); // Recursion
+
+                    // Strip HTML tags and return clean text
+                    const str = String(val).replace(/<[^>]*>/g, '');
+                    return escapeHtml(str);
+                };
+
                 const renderObject = (obj) => {
-                    let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
+                    if (Array.isArray(obj)) {
+                        if (obj.length === 0) return '<span class="text-gray-500 italic">Empty List</span>';
+                        return `<div class="space-y-2">${obj.map(item => `<div class="pl-4 border-l-2 border-gray-700">${renderValue(item)}</div>`).join('')}</div>`;
+                    }
+
+                    let html = '<div class="grid grid-cols-1 gap-2">';
                     for (const [key, value] of Object.entries(obj)) {
-                        if (['status', 'key_status', 'dev', 'result_1', 'result_2', 'result_3'].includes(key)) continue;
-                        if (typeof value === 'object' && value !== null) continue; // Skip nested for now
+                        if (['status', 'key_status', 'dev', 'is_mock'].includes(key)) continue;
+
+                        // Check if value is a complex object/array to decide layout
+                        const isComplex = typeof value === 'object' && value !== null;
 
                         html += `
-                            <div class="result-item">
-                                <div class="result-label">${key.replace(/_/g, ' ')}</div>
-                                <div class="result-value">${escapeHtml(value)}</div>
+                            <div class="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                                <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">${key.replace(/_/g, ' ')}</div>
+                                <div class="text-gray-200 ${isComplex ? 'mt-2' : 'font-mono text-sm break-all'}">
+                                    ${renderValue(value)}
+                                </div>
                             </div>
                         `;
                     }
@@ -473,32 +490,34 @@
                     return html;
                 };
 
-                // Check for result_1, result_2 etc keys
-                const hasSubResults = Object.keys(data).some(k => k.startsWith('result_'));
+                // Root level handling
+                const keys = Object.keys(data).filter(k => !['status', 'key_status', 'dev', 'is_mock', '_meta'].includes(k));
 
-                if (hasSubResults) {
-                    Object.keys(data).forEach(key => {
-                        if (key.startsWith('result_') && data[key] && !data[key].error) {
-                            resultContainer.innerHTML += `
-                                <div class="result-card mb-4 animate-slide-up">
-                                    <div class="result-header"><span class="text-sm font-bold text-gray-300">${key.replace('_', ' ').toUpperCase()}</span></div>
-                                    <div class="p-4">${renderObject(data[key])}</div>
-                                </div>
-                            `;
-                        }
-                    });
+                if (keys.length === 0) {
+                    resultContainer.innerHTML += `<div class="text-center text-gray-500 italic">No data found in response.</div>`;
                 } else {
-                    resultContainer.innerHTML += `
-                        <div class="result-card mb-4 animate-slide-up">
-                            <div class="p-4">${renderObject(data)}</div>
-                        </div>
-                    `;
+                    keys.forEach(key => {
+                        const value = data[key];
+                        resultContainer.innerHTML += `
+                            <div class="result-card mb-6 animate-slide-up">
+                                <div class="result-header flex items-center gap-2">
+                                    <i class="fas fa-database text-indigo-400"></i>
+                                    <span class="text-sm font-bold text-gray-300 uppercase">${key.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div class="p-4">
+                                    ${renderValue(value)}
+                                </div>
+                            </div>
+                        `;
+                    });
                 }
             }
 
-            // Key Status Footer
-            if (data.key_status) {
-                resultContainer.innerHTML += `
+        }
+
+        // Key Status Footer
+        if (data.key_status) {
+            resultContainer.innerHTML += `
                     <div class="mt-8 flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-sm">
                         <div class="flex items-center gap-2 text-gray-400">
                             <i class="fas fa-search"></i>
@@ -510,7 +529,7 @@
                         </div>
                     </div>
                 `;
-            }
+        }
         }
 
         function loadSavedPin() {

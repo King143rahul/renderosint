@@ -225,30 +225,32 @@ def search():
         import random
         if lookup_type == "phone":
             mock_response = {
-                "owner": "John Doe (Mock)",
+                "owner": "RAHUL SHARMA",
                 "results": [
                     {
-                        "id": 1,
+                        "id": 571171033,
                         "mobile": number,
-                        "name": "John Doe",
-                        "address": "123 Mock Street, Demo City",
-                        "carrier": "MockTel",
-                        "email": "john.doe@example.com"
-                    },
-                    {
-                        "id": 2,
-                        "mobile": number,
-                        "name": "J. Doe",
-                        "address": "456 Another Rd, Test Town"
+                        "name": "Mahendra Kumar Sharma",
+                        "father_name": "Nageshwar Rana",
+                        "address": "Vill Dumar Post Jagranath Dham!Dumar!Durga Mandap!Jagarnath Dham Barkagaon!Hazaribagh!Hazaribag!Jharkhand!825317",
+                        "alt_mobile": "",
+                        "circle": "AIRTEL BHR&JHR",
+                        "id_number": "694114599851",
+                        "email": "mahendra@example.com"
                     }
                 ],
                 "protected_sources": [
-                    {"source": "Source 3", "message": "Protected Content (Requires Browser)", "link": "http://meowmeow.rf.gd/test"}
+                    {
+                        "source": "meowmeow",
+                        "message": "Protected Content (Requires Browser)",
+                        "link": "https://meowmeow.rf.gd/gand/chachikichudai.php?num=" + number
+                    }
                 ],
                 "_meta": {
                     "search_term": number,
-                    "total_sources_scanned": 3,
-                    "found_id_number": "Not Found"
+                    "found_id_number": "694114599851",
+                    "total_sources_scanned": 6,
+                    "sources_failed": []
                 },
                 "status": "success",
                 "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
@@ -256,9 +258,47 @@ def search():
                 "is_mock": True
             }
             return jsonify(mock_response)
+        elif lookup_type == "vehicle":
+            return jsonify({
+                "result_1": {
+                    "Owner Name": "RAHUL SHARMA",
+                    "Registration No": number,
+                    "Maker Model": "HYUNDAI CRETA",
+                    "Fuel Type": "PETROL",
+                    "Registration Date": "12-Jan-2022",
+                    "Insurance Expiry": "11-Jan-2025",
+                    "RTO": "DELHI WEST"
+                },
+                "result_3": {
+                    "Owner Name": "RAHUL SHARMA",
+                    "Father Name": "SURESH SHARMA",
+                    "Present Address": "H NO 123, SECTOR 1, NEW DELHI",
+                    "Permanent Address": "H NO 123, SECTOR 1, NEW DELHI",
+                    "Mobile Number": "9876543210"
+                },
+                "status": "success",
+                "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
+                "dev": "RAHUL SHARMA",
+                "is_mock": True
+            })
+        elif lookup_type == "aadhaar":
+            return jsonify({
+                "result": {
+                    "name": "Rahul Sharma",
+                    "gender": "M",
+                    "dob": "01-01-1990",
+                    "address": "S/O Suresh Sharma, 123, Main Road, Delhi - 110001",
+                    "mobile_hash": "xxxxxxxxx210",
+                    "email_hash": "rxxxx@gmail.com"
+                },
+                "status": "success",
+                "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
+                "dev": "RAHUL SHARMA",
+                "is_mock": True
+            })
         else:
             return jsonify({
-                "result": {"Message": "Mock data for non-phone search not implemented yet."},
+                "result": {"Message": f"Mock data for {lookup_type} search not implemented yet."},
                 "status": "success",
                 "key_status": {"searches_left": 99, "expiry_date": "2025-12-31"},
                 "dev": "RAHUL SHARMA",
