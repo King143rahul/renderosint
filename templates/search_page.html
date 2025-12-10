@@ -1,109 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - OSINT by KNOX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-        body { font-family: 'Roboto Mono', monospace; background-color: #0d1117; color: #c9d1d9; }
-        .glass-card { background: rgba(22, 27, 34, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); }
-        .loader { border: 4px solid #30363d; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-field {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5);
+        }
+
         .result-card {
-            background-color: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
             overflow: hidden;
+            transition: all 0.3s ease;
         }
-        .result-title {
-            padding: 0.75rem 1.25rem;
-            border-bottom: 1px solid #30363d;
-            font-weight: 600;
+
+        .result-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(99, 102, 241, 0.3);
         }
-        .result-body {
-            padding: 1.25rem;
+
+        .result-header {
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
+
         .result-item {
-            background-color: #0d1117;
-            padding: 0.75rem;
-            border-radius: 6px;
-            border: 1px solid #2a3037;
-            word-break: break-word;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s ease;
         }
-        .result-key {
-            display: block;
+
+        .result-item:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .result-label {
             font-size: 0.75rem;
-            color: #8b949e;
-            font-weight: 500;
-            text-transform: capitalize;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
             margin-bottom: 0.25rem;
         }
+
         .result-value {
-            font-size: 0.9rem;
-            color: #c9d1d9;
-            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            word-break: break-all;
         }
-        .result-value.priority {
-            color: #58a6ff;
+
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #6366f1;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
         }
-        .result-value img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 6px;
-            margin-top: 0.5rem;
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
     </style>
 </head>
+
 <body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-4xl mx-auto">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-200 tracking-wider">
-                <i class="{{ icon_class }} mr-3"></i>{{ title }}
-            </h1>
-            <a href="/" class="text-sm text-blue-400 hover:text-blue-300 transition-all">
-                <i class="fas fa-arrow-left mr-1"></i>Back to Services
-            </a>
+
+    <!-- Background Elements -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-900/20 blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-900/20 blur-[100px]"></div>
+    </div>
+
+    <div class="w-full max-w-5xl mx-auto animate-slide-up">
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <a href="/"
+                    class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10">
+                    <i class="fas fa-arrow-left text-gray-400"></i>
+                </a>
+                <div>
+                    <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                        <i class="{{ icon_class }} text-indigo-400"></i>
+                        {{ title }}
+                    </h1>
+                </div>
+            </div>
+            <div class="hidden md:block">
+                <span
+                    class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
+                    SECURE LOOKUP
+                </span>
+            </div>
         </header>
 
-        <main class="glass-card rounded-xl shadow-2xl p-6 md:p-8">
-            <div id="globalNoteContainer" class="hidden mb-4"></div>
+        <main class="glass-card rounded-2xl p-6 md:p-8 shadow-2xl">
+            <div id="globalNoteContainer" class="hidden mb-6"></div>
 
-            <div class="space-y-4">
-                <input id="numberInput" type="text" placeholder="{{ placeholder }}" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <input id="pinInput" type="password" placeholder="Enter Your API Key" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                
-                <div class="flex justify-between items-center -mt-2 mb-2">
-                    <div class="flex items-center">
-                        <input id="savePinCheck" type="checkbox" class="w-4 h-4 bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2 rounded">
-                        <label for="savePinCheck" class="ml-2 text-sm font-medium text-gray-400">Save Key</label>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8">
+                <div class="md:col-span-5">
+                    <div class="relative group">
+                        <i
+                            class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors"></i>
+                        <input id="numberInput" type="text" placeholder="{{ placeholder }}"
+                            class="input-field w-full p-4 pl-11 rounded-xl text-white placeholder-gray-500 focus:outline-none">
                     </div>
-                    <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="text-sm text-green-400 hover:text-green-300 transition-all">
-                        <i class="fab fa-whatsapp mr-1"></i>Get API Key
-                    </a>
                 </div>
-
-                <button id="searchBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center">
-                    <i class="fas fa-search mr-2"></i>Search
-                </button>
+                <div class="md:col-span-5">
+                    <div class="relative group">
+                        <i
+                            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors"></i>
+                        <input id="pinInput" type="password" placeholder="Enter API Key"
+                            class="input-field w-full p-4 pl-11 rounded-xl text-white placeholder-gray-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <button id="searchBtn"
+                        class="btn-primary w-full h-full min-h-[56px] rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Search</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
             </div>
 
-            <div id="resultContainer" class="mt-8 min-h-[100px]"></div>
+            <div class="flex justify-between items-center px-2 mb-6 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <div class="relative">
+                        <input id="savePinCheck" type="checkbox" class="peer sr-only">
+                        <div
+                            class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600">
+                        </div>
+                    </div>
+                    <span class="text-gray-400 group-hover:text-gray-300 transition-colors">Remember Key</span>
+                </label>
+                <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal."
+                    target="_blank"
+                    class="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2">
+                    <i class="fab fa-whatsapp"></i> Buy Key
+                </a>
+            </div>
+
+            <div id="resultContainer" class="space-y-6 min-h-[100px]">
+                <!-- Results will appear here -->
+                <div class="text-center py-12 text-gray-600">
+                    <i class="fas fa-search text-4xl mb-4 opacity-20"></i>
+                    <p>Enter details above to start searching</p>
+                </div>
+            </div>
         </main>
-        
-        <footer class="text-center mt-8">
-            <p class="text-gray-500 text-sm">Developer: RAHUL SHARMA</p>
+
+        <footer class="text-center mt-8 text-xs text-gray-600">
+            Developer: RAHUL SHARMA
         </footer>
     </div>
 
     <script>
         const SERVICE_TYPE = '{{ service_type }}';
-        
+
         const numberInput = document.getElementById('numberInput');
         const pinInput = document.getElementById('pinInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -114,8 +259,7 @@
         searchBtn.addEventListener('click', performSearch);
         numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
-        
-        // --- Helper Function to Sanitize HTML ---
+
         function escapeHtml(text) {
             if (text === null || text === undefined) return '';
             return String(text)
@@ -141,15 +285,14 @@
                 const config = await response.json();
                 if (config.note) {
                     globalNoteContainer.innerHTML = `
-                        <div class="p-3 bg-yellow-900/50 border border-yellow-700 text-yellow-300 rounded-lg text-sm">
-                            <i class="fas fa-info-circle mr-2"></i>${escapeHtml(config.note)}
+                        <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-xl text-sm flex items-start gap-3">
+                            <i class="fas fa-info-circle mt-0.5 text-amber-400"></i>
+                            <span>${escapeHtml(config.note)}</span>
                         </div>
                     `;
                     globalNoteContainer.classList.remove('hidden');
                 }
-            } catch (e) {
-                console.error('Failed to fetch global note:', e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function performSearch() {
@@ -157,27 +300,16 @@
             if (SERVICE_TYPE === 'phone') {
                 number = number.replace(/\s+/g, '').replace(/^\+91/, '');
             }
-            
-            const pin = pinInput.value.trim();
-            const deviceId = getDeviceId(); 
 
-            if (SERVICE_TYPE === 'phone' && (number === '9471785783' || number === '7483420178')) {
-                alert("CHAL BKL GHAR JAAAAA........");
-                return;
-            }
+            const pin = pinInput.value.trim();
+            const deviceId = getDeviceId();
 
             if (!number || !pin) {
                 displayError("Please enter both the search query and your API key.");
                 return;
             }
 
-            if (SERVICE_TYPE === 'phone' && (number.length !== 10 || !/^\d+$/.test(number))) {
-                displayError("Phone number must be exactly 10 digits.");
-                return;
-            }
-
             setLoading(true);
-            let responseText = ''; 
 
             try {
                 const response = await fetch('/api/search', {
@@ -186,348 +318,237 @@
                     body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId })
                 });
 
-                responseText = await response.text();
-                const result = JSON.parse(responseText); 
-                
+                const result = await response.json();
+
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-                
+
                 if (result.status === 'success' && savePinCheck.checked) {
                     localStorage.setItem('osintApiKey', pin);
                 } else if (!savePinCheck.checked) {
                     localStorage.removeItem('osintApiKey');
                 }
+
                 displayResults(result);
             } catch (error) {
                 console.error("Search Error:", error);
-                
-                let errorMsg = error.message || "An unexpected error occurred.";
-                if (error instanceof SyntaxError) { 
-                    errorMsg = "Failed to read server response. Please try again.";
-                    if (responseText.includes("502")) errorMsg = "Server error (502 Bad Gateway). A data source might be down.";
-                    else if (responseText.includes("504")) errorMsg = "Server error (504 Gateway Timeout). Request took too long.";
-                }
-                displayError(errorMsg);
+                displayError(error.message || "An unexpected error occurred.");
             } finally {
                 setLoading(false);
             }
         }
-        
-        function handleSearchAgain() {
-            resultContainer.innerHTML = '';
-            numberInput.value = '';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            numberInput.focus();
-        }
-
-        const junkKeys = [
-            'dev', 'status', 'code', 'phone', 'error', 'message', 'success', 
-            'developer', 'support', 'id', 'credit', 'author', 'result',
-            'telegram', 'author'
-        ];
-        
-        const junkValues = [
-            '@oxmzoo', 
-            '@HazexAPI on Telegram', 
-            '@MrHazex',
-            't.me/'
-        ];
-
-        function isDataEmpty(data) {
-            if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-                return true;
-            }
-            for (const key of Object.keys(data)) {
-                const value = data[key];
-                let valueString = String(value).toLowerCase();
-                let isJunkValue = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
-                if (!junkKeys.includes(key.toLowerCase()) && !isJunkValue && value !== null && value !== undefined && value !== 'NA' && value !== 'Not Available' && value !== '') {
-                    return false; 
-                }
-            }
-            return true; 
-        }
-        
-        const prettyKey = (key) => {
-             const keyMap = {'fname': "Father's Name", 'alt_number': 'Alt. Number', 'vehicle_no': 'Vehicle No', 'owner': 'Owner', 'father_name': "Father's Name", 'owner_serial_no': 'Owner Serial', 'maker_model': 'Model', 'maker modal': 'Model', 'vehicle_class': 'Class', 'fuel_type': 'Fuel', 'fuel_norms': 'Fuel Norms', 'registration_date': 'Reg. Date', 'regn dt': 'Reg. Date', 'insurance_company': 'Insurance Co.', 'insurance_no': 'Insurance No', 'insurance_expiry': 'Ins. Expiry', 'insurance_upto': 'Ins. Upto', 'insUpto': 'Ins. Upto', 'fitness_upto': 'Fitness Upto', 'tax_upto': 'Tax Upto', 'puc_no': 'PUC No', 'puc_upto': 'PUC Upto', 'financier_name': 'Financier', 'city_name': 'City', 'vehicle_age': 'Vehicle Age', 'puc_status': 'PUC Status', 'insurance_status': 'Ins. Status', 'vh class': 'Class', 'reg no': 'Reg. No', 'owner name': 'Owner Name'};
-            return keyMap[key.toLowerCase()] || key.replace(/_/g, ' '); 
-        };
-
-        const priorityKeys = ['name', 'owner', 'Owner Name', 'mobile', 'vehicle_no', 'father_name', 'fname', "Father's Name", 'address', 'email', 'alt_number'];
-
-        // Recursive function to build HTML for nested objects
-        function renderNestedObject(data) {
-            let html = '<div class="pl-4 mt-2 space-y-2 border-l border-gray-700">';
-            for (const [key, value] of Object.entries(data)) {
-                if (junkKeys.includes(key.toLowerCase())) continue;
-                
-                html += '<div>';
-                html += `<span class="result-key">${prettyKey(key)}</span>`;
-                html += buildValueHtml(value);
-                html += '</div>';
-            }
-            html += '</div>';
-            return html;
-        }
-
-        // Helper to build HTML for different value types (WITH ESCAPING)
-        function buildValueHtml(value) {
-            let valueHtml = '';
-            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                valueHtml = renderNestedObject(value);
-            } else if (Array.isArray(value)) {
-                valueHtml = `<div class="pl-4 mt-2 space-y-2">${value.map(item => `<div>${buildValueHtml(item)}</div>`).join('')}</div>`;
-            } else {
-                let displayValue = (value || '').toString().replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
-                valueHtml = `<span class="result-value">${escapeHtml(displayValue)}</span>`;
-            }
-            return valueHtml;
-        }
-
-
-        // --- 'displayResults' FUNCTION (UPDATED) ---
-        function displayResults(result) {
-            resultContainer.innerHTML = '';
-            if (result.status !== 'success') {
-                 displayError(result.error || 'Failed to retrieve data.');
-                 return;
-            }
-            const allKeys = Object.keys(result);
-            const dataKeys = allKeys.filter(k => !['status', 'key_status', 'dev'].includes(k));
-            if (dataKeys.length === 0 && isDataEmpty(result)) {
-                 displayError('No data found for this query.');
-                 return;
-            }
-            
-            let htmlContent = '';
-            let plainTextContent = `Search Results for: ${numberInput.value}\n===================================\n`;
-            const resultId = 'result-text-0';
-            
-            const sanitizeError = (errorMsg) => {
-                let msg = String(errorMsg);
-                if (msg.toLowerCase().includes('http') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed to fetch')) {
-                    return 'Data source is unavailable or timed out.';
-                }
-                return escapeHtml(msg);
-            };
-
-            const getPlainTextValue = (v) => {
-                if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-                    return Object.entries(v)
-                        .map(([objK, objV]) => {
-                            if (junkKeys.includes(objK.toLowerCase())) return '';
-                            return `${prettyKey(objK)}: ${getPlainTextValue(objV)}`;
-                        })
-                        .filter(s => s)
-                        .join(', ');
-                } else if (Array.isArray(v)) {
-                    return v.map(item => getPlainTextValue(item)).join(', ');
-                }
-                return String(v).replace(/!/g, ', ').replace(/\s*,\s*/g, ', ').replace(/^,\s*/, '').trim();
-            };
-            
-            // This function creates the new card UI
-            const buildResultCard = (title, item) => {
-                let cardHtml = `<div class="result-card">`;
-                let cardBody = '';
-                let plainTextBody = '';
-                
-                if (item.error) {
-                    const cleanError = sanitizeError(item.error);
-                    cardHtml += `<div class="result-title text-red-400">${title} (Error)</div>`;
-                    cardBody = `<div class="result-body text-red-300">${cleanError}</div>`;
-                    plainTextBody = `Error: ${item.error}\n`;
-                } else if (isDataEmpty(item)) {
-                    cardHtml += `<div class="result-title text-cyan-400">${title}</div>`;
-                    cardBody = `<div class="result-body text-gray-400">No information found from this source.</div>`;
-                    plainTextBody = `No information found.\n`;
-                } else {
-                    cardHtml += `<div class="result-title text-cyan-400">${title}</div>`;
-                    let gridHtml = '';
-                    
-                    const allItemKeys = Object.keys(item);
-                    const sortedKeys = [...priorityKeys.filter(k => allItemKeys.includes(k)), ...allItemKeys.filter(k => !priorityKeys.includes(k))];
-
-                    for (const key of sortedKeys) {
-                        const value = item[key];
-                        let valueString = String(value).toLowerCase(); 
-                        let isJunk = junkValues.some(junk => valueString.includes(junk.toLowerCase()));
-                        
-                        if (value === null || value === 'NA' || value === '' || isJunk || junkKeys.includes(key.toLowerCase())) { 
-                            continue;
-                        }
-
-                        let cleanValue = getPlainTextValue(value);
-                        if (!cleanValue) continue;
-                        
-                        plainTextBody += `${prettyKey(key)}: ${cleanValue}\n`; 
-                        
-                        gridHtml += `<div class="result-item">`;
-                        gridHtml += `<span class="result-key">${prettyKey(key)}</span>`;
-                        
-                        // Handle images
-                        if (key.toLowerCase() === 'image' && typeof value === 'string' && value.startsWith('http')) {
-                            gridHtml += `<span class="result-value"><img src="${escapeHtml(value)}" alt="Vehicle Image"></span>`;
-                        } 
-                        // Handle nested objects/arrays
-                        else if (typeof value === 'object' && value !== null) {
-                             gridHtml += buildValueHtml(value);
-                        }
-                        // Handle plain text
-                        else {
-                            let valueClass = priorityKeys.includes(key) ? 'result-value priority' : 'result-value';
-                            gridHtml += `<span class="${valueClass}">${escapeHtml(cleanValue)}</span>`;
-                        }
-                        gridHtml += `</div>`;
-                    }
-                    cardBody = `<div class="result-body"><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${gridHtml}</div></div>`;
-                }
-                
-                cardHtml += cardBody + `</div>`;
-                return {html: cardHtml, text: plainTextBody};
-            };
-            
-            // --- Main rendering logic ---
-            if (SERVICE_TYPE === 'phone' || SERVICE_TYPE === 'vehicle') {
-                dataKeys.forEach((key, index) => {
-                    const item = result[key];
-                    if (typeof item !== 'object' || item === null) return;
-                    
-                    const title = `Source ${index + 1}`;
-                    const {html, text} = buildResultCard(title, item);
-                    htmlContent += html;
-                    plainTextContent += `\n--- ${title} ---\n${text}`;
-                });
-            } else {
-                // For single-source APIs like Aadhaar, IMEI, etc.
-                const title = `Result`;
-                const {html, text} = buildResultCard(title, result);
-                htmlContent += html;
-                plainTextContent += `--- Result ---\n${text}`;
-            }
-
-            // --- Add Key Status & Action Buttons ---
-            if (result.key_status) {
-                htmlContent += `<div class="text-sm text-gray-500 mt-2 flex flex-wrap justify-between gap-2"><span>Searches Left: <span class="text-green-400 font-medium">${result.key_status.searches_left}</span></span><span>Key Expires: <span class="text-gray-400 font-medium">${result.key_status.expiry_date}</span></span></div>`;
-            }
-            
-            htmlContent += `<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">`;
-            htmlContent += `<button id="copy-all-btn" class="w-full p-3 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-copy mr-2"></i>Copy All Results</button>`;
-            htmlContent += `<button id="download-pdf-btn" class="w-full p-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center" data-target="${resultId}"><i class="fas fa-file-pdf mr-2"></i>Download as PDF</button>`;
-            htmlContent += `<button id="searchAgainBtn" class="w-full p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
-            htmlContent += `</div>`;
-            
-            // Add hidden textarea for copy/pdf
-            htmlContent += `<textarea id="${resultId}" class="hidden">${plainTextContent.trim()}\n\nDeveloper: RAHUL SHARMA</textarea>`;
-
-            resultContainer.innerHTML = htmlContent;
-
-            // --- Attach ALL event listeners (SAFELY) ---
-            const copyBtn = document.getElementById('copy-all-btn');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', (e) => {
-                    const button = e.currentTarget; 
-                    const targetEl = document.getElementById(button.dataset.target);
-                    if (!targetEl) return;
-                    navigator.clipboard.writeText(targetEl.value).then(() => {
-                        button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!'; 
-                        button.classList.add('bg-green-700', 'text-white');
-                        setTimeout(() => { 
-                            button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy All Results'; 
-                            button.classList.remove('bg-green-700', 'text-white'); 
-                        }, 2000);
-                    });
-                });
-            }
-            
-            const searchAgainBtn = document.getElementById('searchAgainBtn');
-            if (searchAgainBtn) {
-                searchAgainBtn.addEventListener('click', handleSearchAgain);
-            }
-            
-            const pdfBtn = document.getElementById('download-pdf-btn');
-            if (pdfBtn) {
-                pdfBtn.addEventListener('click', (e) => handleDownloadPDF(e.currentTarget));
-            }
-        }
-        // --- END OF FUNCTION ---
-
-        // --- PDF Logic ---
-        function generatePDFLogic(button) {
-            const { jsPDF } = window.jspdf;
-            if (!jsPDF) {
-                alert("Error: PDF library failed to load.");
-                button.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>Download as PDF';
-                button.disabled = false;
-                return;
-            }
-            try {
-                const textToCopy = document.getElementById(button.dataset.target).value;
-                const doc = new jsPDF();
-                doc.setFont("Helvetica", "normal");
-                doc.setFontSize(10);
-                const lines = doc.splitTextToSize(textToCopy, 180);
-                doc.text(lines, 15, 15);
-                const fileName = `osint_results_${numberInput.value || 'data'}.pdf`;
-                doc.save(fileName);
-            } catch (e) {
-                console.error("PDF Generation Error:", e);
-                alert("An error occurred while generating the PDF.");
-            } finally {
-                setTimeout(() => {
-                    button.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>Download as PDF';
-                    button.disabled = false;
-                }, 1000);
-            }
-        }
-
-        function handleDownloadPDF(button) {
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading Lib...';
-            button.disabled = true;
-
-            if (window.jspdf) {
-                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
-                generatePDFLogic(button);
-            } else {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                script.onload = () => {
-                    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
-                    generatePDFLogic(button);
-                };
-                script.onerror = () => {
-                    alert("Failed to load PDF library. Please try again.");
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                };
-                document.head.appendChild(script);
-            }
-        }
 
         function displayError(msg) {
-            let cleanMsg = String(msg);
-            if (cleanMsg.toLowerCase().includes('http') || cleanMsg.toLowerCase().includes('network')) {
-                cleanMsg = 'An error occurred. Please try again.';
-            }
-            // Use safe HTML for error display too
-            resultContainer.innerHTML = `<div class="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg text-center"><i class="fas fa-exclamation-triangle mr-2"></i>${escapeHtml(cleanMsg)}</div><button id="searchAgainBtn" class="w-full p-3 mt-6 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-white transition-all shadow-lg flex items-center justify-center"><i class="fas fa-search mr-2"></i>Search Again</button>`;
-            
-            const btn = document.getElementById('searchAgainBtn');
-            if (btn) btn.addEventListener('click', handleSearchAgain);
+            resultContainer.innerHTML = `
+                <div class="p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
+                    <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-400"></i>
+                    </div>
+                    <h3 class="text-red-200 font-bold mb-2">Search Failed</h3>
+                    <p class="text-red-300/80 text-sm">${escapeHtml(msg)}</p>
+                    <button onclick="location.reload()" class="mt-6 px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg text-sm font-medium transition-colors">
+                        Try Again
+                    </button>
+                </div>
+            `;
         }
 
         function setLoading(loading) {
             searchBtn.disabled = loading;
-            searchBtn.innerHTML = loading ? `<div class="loader !w-6 !h-6 !border-t-white"></div>` : `<i class="fas fa-search mr-2"></i>Search`;
+            searchBtn.innerHTML = loading ? `<div class="loader"></div>` : `<span>Search</span><i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>`;
         }
-        
+
+        // --- NEW: Result Display Logic ---
+        function displayResults(data) {
+            // Use a buffer to build HTML to prevent partial rendering/silent failures
+            let htmlBuffer = '';
+
+            try {
+                // Show Mock Warning
+                if (data.is_mock) {
+                    htmlBuffer += `
+                    <div class="mb-6 p-4 bg-yellow-600/20 border border-yellow-600/40 rounded-xl text-center">
+                        <p class="text-yellow-200 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> DEMO MODE</p>
+                        <p class="text-yellow-200/70 text-sm">Database not configured. Showing mock results.</p>
+                    </div>
+                `;
+                }
+
+                // 1. Handle Protected Sources (Data Leak Fix)
+                if (data.protected_sources && Array.isArray(data.protected_sources) && data.protected_sources.length > 0) {
+                    const protectedHtml = data.protected_sources.map(src => `
+                    <div class="flex items-center justify-between p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-shield-alt text-amber-400"></i>
+                            <span class="text-amber-200 font-medium text-sm">${escapeHtml(src.source)}</span>
+                        </div>
+                        <span class="text-xs text-amber-400/70 italic">${escapeHtml(src.message)}</span>
+                    </div>
+                `).join('');
+
+                    htmlBuffer += `
+                    <div class="mb-6">
+                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i class="fas fa-lock text-xs"></i> Protected Content
+                        </h4>
+                        <div class="space-y-2">${protectedHtml}</div>
+                    </div>
+                `;
+                }
+
+                // 2. Handle Phone Search Results (New Array Structure)
+                if (SERVICE_TYPE === 'phone' && data.results && Array.isArray(data.results)) {
+                    // Owner Info Card
+                    if (data.owner) {
+                        htmlBuffer += `
+                        <div class="result-card mb-6 bg-indigo-500/5 border-indigo-500/20">
+                            <div class="p-6 text-center">
+                                <div class="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-4 text-2xl text-indigo-400 font-bold">
+                                    ${escapeHtml(data.owner.charAt(0))}
+                                </div>
+                                <h2 class="text-2xl font-bold text-white mb-1">${escapeHtml(data.owner)}</h2>
+                                <p class="text-indigo-300/70 text-sm font-mono">${escapeHtml(data._meta?.search_term || '')}</p>
+                            </div>
+                        </div>
+                    `;
+                    }
+
+                    // Results List
+                    data.results.forEach((item, index) => {
+                        let gridHtml = '';
+                        // Priority Order: Name, Mobile, Address, ID, Father, Email, etc.
+                        const fields = [
+                            { k: 'name', l: 'Name', i: 'user' },
+                            { k: 'mobile', l: 'Mobile', i: 'phone' },
+                            { k: 'address', l: 'Address', i: 'map-marker-alt' },
+                            { k: 'id_number', l: 'ID Number', i: 'id-card' },
+                            { k: 'father_name', l: "Father's Name", i: 'user-tie' },
+                            { k: 'email', l: 'Email', i: 'envelope' },
+                            { k: 'alt_mobile', l: 'Alt Mobile', i: 'phone-alt' },
+                            { k: 'circle', l: 'Circle', i: 'signal' }
+                        ];
+
+                        fields.forEach(f => {
+                            if (item[f.k]) {
+                                gridHtml += `
+                                <div class="result-item group">
+                                    <div class="result-label flex items-center gap-2">
+                                        <i class="fas fa-${f.i} text-indigo-400/70 group-hover:text-indigo-400 transition-colors"></i>
+                                        ${f.l}
+                                    </div>
+                                    <div class="result-value">${escapeHtml(item[f.k])}</div>
+                                </div>
+                            `;
+                            }
+                        });
+
+                        htmlBuffer += `
+                        <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
+                            <div class="result-header flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-300">Result #${index + 1}</span>
+                                <span class="text-xs text-gray-500 font-mono">ID: ${item.id || 'N/A'}</span>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${gridHtml}
+                            </div>
+                        </div>
+                    `;
+                    });
+                }
+                // 3. Handle Other Services (Generic Pretty Print)
+                else {
+                    const renderValue = (val) => {
+                        if (val === null || val === undefined) return '<span class="text-gray-600 italic">N/A</span>';
+                        if (typeof val === 'boolean') return val ? '<span class="text-green-400 font-bold">Yes</span>' : '<span class="text-red-400 font-bold">No</span>';
+                        if (typeof val === 'object') return renderObject(val); // Recursion
+
+                        // Strip HTML tags and return clean text
+                        const str = String(val).replace(/<[^>]*>/g, '');
+                        return escapeHtml(str);
+                    };
+
+                    const renderObject = (obj) => {
+                        if (!obj) return '';
+                        if (Array.isArray(obj)) {
+                            if (obj.length === 0) return '<span class="text-gray-500 italic">Empty List</span>';
+                            return `<div class="space-y-2">${obj.map(item => `<div class="pl-4 border-l-2 border-gray-700">${renderValue(item)}</div>`).join('')}</div>`;
+                        }
+
+                        let html = '<div class="grid grid-cols-1 gap-2">';
+                        for (const [key, value] of Object.entries(obj)) {
+                            if (['status', 'key_status', 'dev', 'is_mock'].includes(key)) continue;
+
+                            // Check if value is a complex object/array to decide layout
+                            const isComplex = typeof value === 'object' && value !== null;
+
+                            html += `
+                            <div class="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                                <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">${key.replace(/_/g, ' ')}</div>
+                                <div class="text-gray-200 ${isComplex ? 'mt-2' : 'font-mono text-sm break-all'}">
+                                    ${renderValue(value)}
+                                </div>
+                            </div>
+                        `;
+                        }
+                        html += '</div>';
+                        return html;
+                    };
+
+                    // Root level handling
+                    const keys = Object.keys(data).filter(k => !['status', 'key_status', 'dev', 'is_mock', '_meta'].includes(k));
+
+                    if (keys.length === 0) {
+                        htmlBuffer += `<div class="text-center text-gray-500 italic">No data found in response.</div>`;
+                    } else {
+                        keys.forEach(key => {
+                            const value = data[key];
+                            htmlBuffer += `
+                            <div class="result-card mb-6 animate-slide-up">
+                                <div class="result-header flex items-center gap-2">
+                                    <i class="fas fa-database text-indigo-400"></i>
+                                    <span class="text-sm font-bold text-gray-300 uppercase">${key.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div class="p-4">
+                                    ${renderValue(value)}
+                                </div>
+                            </div>
+                        `;
+                        });
+                    }
+                }
+
+                // Key Status Footer
+                if (data.key_status) {
+                    htmlBuffer += `
+                    <div class="mt-8 flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-sm">
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <i class="fas fa-search"></i>
+                            <span>Searches Left: <span class="text-white font-bold">${data.key_status.searches_left}</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <i class="fas fa-clock"></i>
+                            <span>Expires: <span class="text-white font-bold">${data.key_status.expiry_date}</span></span>
+                        </div>
+                    </div>
+                `;
+                }
+
+                // --- FINAL INJECTION ---
+                resultContainer.innerHTML = htmlBuffer;
+
+            } catch (e) {
+                console.error("Render Error:", e);
+                displayError("Error displaying results: " + e.message);
+            }
+        }
+
         function loadSavedPin() {
             const savedPin = localStorage.getItem('osintApiKey');
             if (savedPin) { pinInput.value = savedPin; savePinCheck.checked = true; }
         }
-        
+
         loadSavedPin();
         fetchGlobalNote();
     </script>
 </body>
+
 </html>
