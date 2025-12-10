@@ -17,7 +17,7 @@ from bson import ObjectId
 # --- Initialization ---
 load_dotenv()
 app = Flask(__name__, static_folder="static", template_folder="templates")
-app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
+app.secret_key = os.getenv("SECRET_KEY", "fixed_secret_key_for_serverless_sessions_847382")
 
 # --- Security headers ---
 @app.after_request
@@ -262,8 +262,8 @@ def search():
     try:
         if lookup_type == "phone":
             api_data['result_1'] = safe_api_call(PHONE_API_1.format(number), headers)
-            api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
-            api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
+            # api_data['result_2'] = safe_api_call(PHONE_API_2.format(number), headers)
+            # api_data['result_3'] = safe_api_call(PHONE_API_3.format(number), headers)
         elif lookup_type == "vehicle":
             api_data['result_1'] = safe_api_call(VEHICLE_API_1.format(number), headers)
             api_data['result_2'] = safe_api_call(VEHICLE_API_2.format(number), headers)

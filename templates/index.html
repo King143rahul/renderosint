@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,18 +8,56 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap');
-        body { font-family: 'Roboto', sans-serif; background-color: #0d1117; color: #c9d1d9; }
-        .font-mono { font-family: 'Roboto Mono', monospace; }
-        .gradient-text { background: linear-gradient(to right, #3b82f6, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .service-card { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); transition: all 0.3s ease; transform: perspective(1000px); }
-        .service-card:hover { transform: perspective(1000px) translateY(-8px) translateZ(20px); border-color: #3b82f6; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2), 0 8px 10px -6px rgba(59, 130, 246, 0.2); }
-        .service-card i { transition: transform 0.3s ease; }
-        .service-card:hover i { transform: scale(1.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            color: #e2e8f0;
+            background-attachment: fixed;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .service-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .service-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col justify-between p-4 md:p-8">
-    
+
     <header class="w-full max-w-6xl mx-auto flex justify-between items-center mb-10">
         <div>
             <h1 class="text-2xl font-bold font-mono tracking-wider gradient-text">
@@ -27,14 +66,17 @@
         </div>
         <nav>
             {% if user_info %}
-                <div class="flex items-center gap-4">
-                    <span class="text-sm text-gray-400 hidden md:block">Welcome, <span class="font-medium text-gray-200">{{ user_info.name }}</span></span>
-                    <a href="/logout" class="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">Logout</a>
-                </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-gray-400 hidden md:block">Welcome, <span class="font-medium text-gray-200">{{
+                        user_info.name }}</span></span>
+                <a href="/logout"
+                    class="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">Logout</a>
+            </div>
             {% else %}
-                <a href="/login" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-white transition-colors text-sm shadow-lg">
-                    User Login
-                </a>
+            <a href="/login"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-white transition-colors text-sm shadow-lg">
+                User Login
+            </a>
             {% endif %}
         </nav>
     </header>
@@ -79,7 +121,8 @@
                 <p class="text-gray-400 text-sm">Get information from a Pincode.</p>
             </a>
             <a href="/search/gst" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center">
-                <i class="fas fa-file-invoice-dollar text-4xl mb-5 text-indigo-400 p-4 bg-indigo-900/50 rounded-full"></i>
+                <i
+                    class="fas fa-file-invoice-dollar text-4xl mb-5 text-indigo-400 p-4 bg-indigo-900/50 rounded-full"></i>
                 <h3 class="text-xl font-bold text-gray-200 mb-2">GST Info</h3>
                 <p class="text-gray-400 text-sm">Get information from a GST number.</p>
             </a>
@@ -108,16 +151,19 @@
                 <h3 class="text-xl font-bold text-gray-200 mb-2">IFSC Info</h3>
                 <p class="text-gray-400 text-sm">Get information from an IFSC code.</p>
             </a>
-            <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal." target="_blank" class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center bg-green-600/10 border-green-500 hover:bg-green-600/20">
+            <a href="https://wa.me/917483420178?text=Hi%20KNOX,%20I%20need%20an%20API%20key%20for%20the%20OSINT%20Portal."
+                target="_blank"
+                class="service-card rounded-xl p-6 md:p-8 flex flex-col items-center text-center bg-green-600/10 border-green-500 hover:bg-green-600/20">
                 <i class="fab fa-whatsapp text-4xl mb-5 text-green-400"></i>
                 <h3 class="text-xl font-bold text-gray-200 mb-2">Get API Key</h3>
                 <p class="text-gray-400 text-sm">Contact us on WhatsApp to purchase a key.</p>
             </a>
         </div>
     </main>
-    
+
     <footer class="text-center mt-12 pt-8 border-t border-gray-800">
         <p class="text-gray-500 text-sm font-mono">Developer: RAHUL SHARMA</p>
     </footer>
 </body>
+
 </html>

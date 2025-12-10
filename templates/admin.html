@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -7,20 +8,80 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-        body { font-family: 'Roboto Mono', monospace; background-color:#0d1117; color:#c9d1d9; }
-        .glass-card { background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border:1px solid rgba(48,54,61,0.5); }
-        .modal-content { background-color:#161b22; }
-        .hidden { display: none !important; }
-        .pin-link { cursor: pointer; }
-        .pin-link:hover { text-decoration: underline; color: #60a5fa; }
-        .modal { position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
-        .modal-body { max-height: 80vh; overflow-y: auto; }
-        .tab-btn { @apply px-4 py-2 font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:border-gray-500; }
-        .tab-btn.active { @apply text-blue-400 border-blue-400; }
-        .stat-card { @apply glass-card rounded-xl p-6; }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            color: #e2e8f0;
+            background-attachment: fixed;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content {
+            background-color: #0f1115;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .pin-link {
+            cursor: pointer;
+        }
+
+        .pin-link:hover {
+            text-decoration: underline;
+            color: #818cf8;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-body {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .tab-btn {
+            @apply px-4 py-2 font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:border-gray-500 transition-colors;
+        }
+
+        .tab-btn.active {
+            @apply text-indigo-400 border-indigo-400;
+        }
+
+        .stat-card {
+            @apply glass-card rounded-xl p-6 hover:bg-white/5 transition-colors;
+        }
     </style>
 </head>
+
 <body class="min-h-screen p-4 md:p-8">
     <div id="login-view" class="flex items-center justify-center min-h-screen">
         <div class="w-full max-w-md">
@@ -29,9 +90,14 @@
                 <p class="text-gray-400 mt-2">OSINT by KNOX</p>
             </header>
             <main class="glass-card rounded-xl shadow-2xl p-8 space-y-6">
-                <div><input id="username" placeholder="Admin Username" value="RAHUL" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                <div><input id="password" type="password" placeholder="Admin Password" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                <button id="loginBtn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">Login</button>
+                <div><input id="username" placeholder="Admin Username" value="RAHUL"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div><input id="password" type="password" placeholder="Admin Password"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button id="loginBtn"
+                    class="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white transition-all shadow-lg">Login</button>
                 <div id="login-error" class="text-red-400 text-center text-sm"></div>
             </main>
         </div>
@@ -39,16 +105,21 @@
 
     <div id="dashboard-view" class="hidden w-full max-w-7xl mx-auto">
         <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
-             <h1 class="text-3xl font-bold text-gray-200"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</h1>
-             <button id="logoutBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Logout</button>
+            <h1 class="text-3xl font-bold text-gray-200"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</h1>
+            <button id="logoutBtn"
+                class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Logout</button>
         </header>
 
         <div class="border-b border-gray-700 mb-6">
             <nav class="flex -mb-px">
-                <button id="tab-dashboard" class="tab-btn active" data-target="panel-dashboard"><i class="fas fa-chart-line mr-2"></i>Dashboard</button>
-                <button id="tab-keys" class="tab-btn" data-target="panel-keys"><i class="fas fa-key mr-2"></i>API Keys</button>
-                <button id="tab-users" class="tab-btn" data-target="panel-users"><i class="fas fa-users mr-2"></i>Users</button>
-                <button id="tab-settings" class="tab-btn" data-target="panel-settings"><i class="fas fa-cog mr-2"></i>Settings</button>
+                <button id="tab-dashboard" class="tab-btn active" data-target="panel-dashboard"><i
+                        class="fas fa-chart-line mr-2"></i>Dashboard</button>
+                <button id="tab-keys" class="tab-btn" data-target="panel-keys"><i class="fas fa-key mr-2"></i>API
+                    Keys</button>
+                <button id="tab-users" class="tab-btn" data-target="panel-users"><i
+                        class="fas fa-users mr-2"></i>Users</button>
+                <button id="tab-settings" class="tab-btn" data-target="panel-settings"><i
+                        class="fas fa-cog mr-2"></i>Settings</button>
             </nav>
         </div>
 
@@ -78,7 +149,10 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left">
                                 <thead class="border-b border-gray-700 text-sm">
-                                    <tr><th class="p-2">PIN</th><th class="p-2">Usage</th></tr>
+                                    <tr>
+                                        <th class="p-2">PIN</th>
+                                        <th class="p-2">Usage</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="table-top-keys"></tbody>
                             </table>
@@ -89,7 +163,12 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left">
                                 <thead class="border-b border-gray-700 text-sm">
-                                    <tr><th class="p-2">Time</th><th class="p-2">PIN</th><th class="p-2">Type</th><th class="p-2">Query</th></tr>
+                                    <tr>
+                                        <th class="p-2">Time</th>
+                                        <th class="p-2">PIN</th>
+                                        <th class="p-2">Type</th>
+                                        <th class="p-2">Query</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="table-recent-searches"></tbody>
                             </table>
@@ -100,8 +179,12 @@
 
             <div id="panel-keys" class="tab-panel hidden">
                 <div class="flex justify-end mb-4 gap-4">
-                    <button id="batch-add-key-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i class="fas fa-layer-group mr-2"></i>Batch Generate</button>
-                    <button id="add-key-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white"><i class="fas fa-plus mr-2"></i>Add Single Key</button>
+                    <button id="batch-add-key-btn"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i
+                            class="fas fa-layer-group mr-2"></i>Batch Generate</button>
+                    <button id="add-key-btn"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white"><i
+                            class="fas fa-plus mr-2"></i>Add Single Key</button>
                 </div>
                 <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
                     <div class="overflow-x-auto">
@@ -125,9 +208,14 @@
             <div id="panel-users" class="tab-panel hidden">
                 <div class="flex justify-end mb-4">
                     <div class="flex gap-2">
-                        <input id="user-search-input" type="text" placeholder="Search by name or phone..." class="p-2 bg-gray-900 border border-gray-700 rounded-lg">
-                        <button id="user-search-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i class="fas fa-search"></i></button>
-                        <button id="user-search-clear-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white"><i class="fas fa-times"></i></button>
+                        <input id="user-search-input" type="text" placeholder="Search by name or phone..."
+                            class="p-2 bg-gray-900 border border-gray-700 rounded-lg">
+                        <button id="user-search-btn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white"><i
+                                class="fas fa-search"></i></button>
+                        <button id="user-search-clear-btn"
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white"><i
+                                class="fas fa-times"></i></button>
                     </div>
                 </div>
                 <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
@@ -154,11 +242,16 @@
                         <h3 class="text-xl font-bold mb-4">Global Note</h3>
                         <div class="space-y-4">
                             <div>
-                                <p class="text-xs text-gray-500 mb-2">This note will be shown to all users on all search pages.</p>
-                                <textarea id="global-note-text" rows="4" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="E.g., Server maintenance..."></textarea>
+                                <p class="text-xs text-gray-500 mb-2">This note will be shown to all users on all search
+                                    pages.</p>
+                                <textarea id="global-note-text" rows="4"
+                                    class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="E.g., Server maintenance..."></textarea>
                             </div>
                             <div class="flex justify-end">
-                                <button id="save-note-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white">Save Note</button>
+                                <button id="save-note-btn"
+                                    class="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white">Save
+                                    Note</button>
                             </div>
                             <div id="note-save-status" class="text-center text-sm"></div>
                         </div>
@@ -167,7 +260,9 @@
                         <h3 class="text-xl font-bold mb-4">API Health</h3>
                         <div class="space-y-4">
                             <p class="text-xs text-gray-500 mb-2">Check the status of all external APIs.</p>
-                            <button id="api-health-check-btn" class="w-full px-5 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold text-white">Run API Health Check</button>
+                            <button id="api-health-check-btn"
+                                class="w-full px-5 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold text-white">Run
+                                API Health Check</button>
                             <div id="api-health-results" class="space-y-2 max-h-60 overflow-y-auto"></div>
                         </div>
                     </div>
@@ -183,96 +278,135 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-400">API Key (PIN)</label>
-                    <input id="modal-key-pin" placeholder="Enter new PIN" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="modal-key-pin" placeholder="Enter new PIN"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
                 <div>
                     <label class="text-sm text-gray-400">Daily Limit</label>
-                    <input id="modal-key-limit" type="number" placeholder="e.g., 10" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="modal-key-limit" type="number" placeholder="e.g., 10"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-400">Device Limit</label>
-                    <input id="modal-key-device-limit" type="number" placeholder="e.g., 1" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="modal-key-device-limit" type="number" placeholder="e.g., 1"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
                 <div>
                     <label class="text-sm text-gray-400">Expiry Date</label>
-                    <input id="modal-key-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
+                    <input id="modal-key-expiry" type="date"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
                 </div>
             </div>
             <div>
                 <label class="text-sm text-gray-400">Permissions</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="perm-check"> <span>Phone</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="perm-check"> <span>Vehicle</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="perm-check"> <span>Aadhaar</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check"> <span>Family</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="perm-check"> <span>Instagram</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode" class="perm-check"> <span>Pincode</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst" class="perm-check"> <span>GST</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip" class="perm-check"> <span>IP Address</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei" class="perm-check"> <span>IMEI</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim" class="perm-check"> <span>PK SIM</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi" class="perm-check"> <span>UPI</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc" class="perm-check"> <span>IFSC</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="perm-check">
+                        <span>Phone</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle"
+                            class="perm-check"> <span>Vehicle</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar"
+                            class="perm-check"> <span>Aadhaar</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="perm-check">
+                        <span>Family</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="perm-check">
+                        <span>Instagram</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode"
+                            class="perm-check"> <span>Pincode</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst" class="perm-check">
+                        <span>GST</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip" class="perm-check">
+                        <span>IP Address</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei" class="perm-check">
+                        <span>IMEI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim" class="perm-check">
+                        <span>PK SIM</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi" class="perm-check">
+                        <span>UPI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc" class="perm-check">
+                        <span>IFSC</span></label>
                 </div>
             </div>
             <div id="modal-error" class="text-red-400 text-center text-sm"></div>
             <div class="flex gap-4">
-                <button id="modal-confirm-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create Key</button>
-                <button id="modal-cancel-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+                <button id="modal-confirm-btn"
+                    class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Create
+                    Key</button>
+                <button id="modal-cancel-btn"
+                    class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
             </div>
         </div>
     </div>
-    
+
     <div id="batch-key-modal" class="modal hidden">
         <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6">
             <h2 class="text-2xl font-bold">Batch Generate Keys</h2>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-400">Number to Create</label>
-                    <input id="batch-key-count" type="number" placeholder="e.g., 10" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="batch-key-count" type="number" placeholder="e.g., 10"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
                 <div>
                     <label class="text-sm text-gray-400">PIN Prefix (Optional)</label>
-                    <input id="batch-key-prefix" placeholder="e.g., NEW-" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="batch-key-prefix" placeholder="e.g., NEW-"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-400">Daily Limit</label>
-                    <input id="batch-key-limit" type="number" value="10" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="batch-key-limit" type="number" value="10"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
                 <div>
                     <label class="text-sm text-gray-400">Device Limit</label>
-                    <input id="batch-key-device-limit" type="number" value="1" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
+                    <input id="batch-key-device-limit" type="number" value="1"
+                        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1">
                 </div>
             </div>
             <div>
                 <label class="text-sm text-gray-400">Expiry Date</label>
-                <input id="batch-key-expiry" type="date" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
+                <input id="batch-key-expiry" type="date"
+                    class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg mt-1" min="">
             </div>
             <div>
                 <label class="text-sm text-gray-400">Permissions (All keys)</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone" class="batch-perm-check" checked> <span>Phone</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle" class="batch-perm-check" checked> <span>Vehicle</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar" class="batch-perm-check" checked> <span>Aadhaar</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="family" class="batch-perm-check" checked> <span>Family</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta" class="batch-perm-check" checked> <span>Instagram</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode" class="batch-perm-check" checked> <span>Pincode</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst" class="batch-perm-check" checked> <span>GST</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip" class="batch-perm-check" checked> <span>IP Address</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei" class="batch-perm-check" checked> <span>IMEI</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim" class="batch-perm-check" checked> <span>PK SIM</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi" class="batch-perm-check" checked> <span>UPI</span></label>
-                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc" class="batch-perm-check" checked> <span>IFSC</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="phone"
+                            class="batch-perm-check" checked> <span>Phone</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="vehicle"
+                            class="batch-perm-check" checked> <span>Vehicle</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="aadhaar"
+                            class="batch-perm-check" checked> <span>Aadhaar</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="family"
+                            class="batch-perm-check" checked> <span>Family</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="insta"
+                            class="batch-perm-check" checked> <span>Instagram</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pincode"
+                            class="batch-perm-check" checked> <span>Pincode</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="gst"
+                            class="batch-perm-check" checked> <span>GST</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ip"
+                            class="batch-perm-check" checked> <span>IP Address</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="imei"
+                            class="batch-perm-check" checked> <span>IMEI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="pksim"
+                            class="batch-perm-check" checked> <span>PK SIM</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="upi"
+                            class="batch-perm-check" checked> <span>UPI</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" value="ifsc"
+                            class="batch-perm-check" checked> <span>IFSC</span></label>
                 </div>
             </div>
             <div id="batch-modal-error" class="text-red-400 text-center text-sm"></div>
             <div class="flex gap-4">
-                <button id="batch-modal-confirm-btn" class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Generate Keys</button>
-                <button id="batch-modal-cancel-btn" class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
+                <button id="batch-modal-confirm-btn"
+                    class="flex-1 p-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white">Generate
+                    Keys</button>
+                <button id="batch-modal-cancel-btn"
+                    class="flex-1 p-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Cancel</button>
             </div>
         </div>
     </div>
@@ -280,9 +414,12 @@
     <div id="history-modal" class="modal hidden">
         <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-3xl space-y-6">
             <h2 id="history-modal-title" class="text-2xl font-bold">Search History</h2>
-            <div id="history-modal-body" class="modal-body"><p>Loading...</p></div>
+            <div id="history-modal-body" class="modal-body">
+                <p>Loading...</p>
+            </div>
             <div class="flex justify-end gap-4">
-                <button id="history-modal-close-btn" class="p-3 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Close</button>
+                <button id="history-modal-close-btn"
+                    class="p-3 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold text-white">Close</button>
             </div>
         </div>
     </div>
@@ -295,13 +432,13 @@
         // Views
         const loginView = document.getElementById('login-view');
         const dashboardView = document.getElementById('dashboard-view');
-        
+
         // Login
         const loginBtn = document.getElementById('loginBtn');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const loginError = document.getElementById('login-error');
-        
+
         // Dashboard
         const logoutBtn = document.getElementById('logoutBtn');
         const addKeyBtn = document.getElementById('add-key-btn');
@@ -345,7 +482,7 @@
         const modalKeyExpiry = document.getElementById('modal-key-expiry');
         const modalError = document.getElementById('modal-error');
         const permCheckboxes = document.querySelectorAll('.perm-check');
-        
+
         // Batch Key Modal
         const batchKeyModal = document.getElementById('batch-key-modal');
         const batchModalConfirmBtn = document.getElementById('batch-modal-confirm-btn');
@@ -376,7 +513,7 @@
                 button.innerHTML = originalText || button.dataset.originalText || 'Submit';
             }
         }
-        
+
         const today = new Date().toISOString().split('T')[0];
         modalKeyExpiry.setAttribute('min', today);
         batchKeyExpiry.setAttribute('min', today);
@@ -448,16 +585,16 @@
             const result = await apiRequest('/admin/dashboard_stats');
             if (!result.success) return;
             const stats = result.stats;
-            
+
             statTotalSearches.textContent = stats.total_searches_today;
             statActiveKeys.textContent = stats.active_keys;
             statTotalUsers.textContent = stats.total_users;
             statPopularService.textContent = stats.popular_services.length > 0 ? stats.popular_services[0]._id : 'N/A';
-            
+
             tableTopKeys.innerHTML = stats.top_5_keys.map(k => `
                 <tr class="border-b border-gray-800"><td class="p-2 font-mono text-cyan-400">${k.pin}</td><td class="p-2">${k.used_today}</td></tr>
             `).join('');
-            
+
             tableRecentSearches.innerHTML = stats.recent_searches.map(s => {
                 const time = new Date(s.timestamp).toLocaleTimeString();
                 return `<tr class="border-b border-gray-800 text-sm">
@@ -478,13 +615,13 @@
                 alert('Failed to load keys: ' + result.error);
             }
         }
-        
+
         async function loadUsers(searchQuery = '') {
             const result = await apiRequest(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
             if (result.success) renderUsers(result.users || []);
             else alert('Failed to load users: ' + (result.error || 'Unknown error'));
         }
-        
+
         async function loadSettings() {
             const result = await apiRequest('/admin/note'); // GET
             if (result.success) globalNoteText.value = result.note || '';
@@ -500,7 +637,7 @@
             keys.forEach(key => {
                 const expiry = key.expiry ? new Date(key.expiry).toISOString().split('T')[0] : 'Never';
                 const isExpired = key.expiry && new Date(expiry) < new Date(today);
-                
+
                 let perms = [];
                 if (key.allow_phone) perms.push('Ph');
                 if (key.allow_vehicle) perms.push('Veh');
@@ -539,7 +676,7 @@
             });
             attachTableListeners();
         }
-        
+
         function renderUsers(users) {
             usersTableBody.innerHTML = '';
             if (!users || users.length === 0) {
@@ -552,7 +689,7 @@
                 const banBtnClass = isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
                 const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban';
                 const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
-                
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="p-3">${user.name}</td>
@@ -613,7 +750,7 @@
             document.querySelectorAll('.reset-device-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetDevice(e.currentTarget)));
             document.querySelectorAll('.reset-usage-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetUsage(e.currentTarget)));
         }
-        
+
         async function handleDeleteKey(button) {
             const id = button.dataset.id;
             if (!confirm(`Delete key: ${id}?`)) return;
@@ -625,7 +762,7 @@
                 setLoading(button, false, '<i class="fas fa-trash"></i>');
             }
         }
-        
+
         async function handleResetDevice(button) {
             const id = button.dataset.id;
             if (!confirm(`Reset all devices for key: ${id}?`)) return;
@@ -637,7 +774,7 @@
                 setLoading(button, false, '<i class="fas fa-key"></i>');
             }
         }
-        
+
         async function handleResetUsage(button) {
             const id = button.dataset.id;
             if (!confirm(`Reset daily usage for key: ${id}?`)) return;
@@ -659,7 +796,7 @@
             const isBanned = button.dataset.banned === 'true';
             const action = isBanned ? 'unban' : 'ban';
             if (!confirm(`Are you sure you want to ${action} user ${phone}?`)) return;
-            
+
             setLoading(button, true);
             const result = await apiRequest('/admin/ban_user', {
                 method: 'POST',
@@ -677,7 +814,7 @@
         function openKeyModal(mode = 'add', pin = null) {
             currentModalMode = mode;
             modalError.textContent = '';
-            
+
             if (mode === 'edit') {
                 const key = allKeysData.find(k => k.pin === pin);
                 if (!key) return;
@@ -709,7 +846,7 @@
         async function handleModalConfirm() {
             modalError.textContent = '';
             setLoading(modalConfirmBtn, true);
-            
+
             const pin = (currentModalMode === 'edit') ? modalKeyPinHidden.value : modalKeyPin.value.trim();
             const limit = parseInt(modalKeyLimit.value || '10', 10);
             const device_limit = parseInt(modalKeyDeviceLimit.value || '1', 10);
@@ -722,10 +859,10 @@
                 setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
                 return;
             }
-            
+
             const endpoint = (currentModalMode === 'edit') ? '/admin/update' : '/admin/add';
             const payload = { pin, limit, expiry, permissions, device_limit };
-            
+
             const result = await apiRequest(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (result.success) {
                 await loadKeys();
@@ -735,7 +872,7 @@
             }
             setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
         }
-        
+
         // --- Batch Key Modal Logic ---
         function openBatchKeyModal() {
             batchModalError.textContent = '';
@@ -747,9 +884,9 @@
             batchPermCheckboxes.forEach(cb => cb.checked = true);
             batchKeyModal.classList.remove('hidden');
         }
-        
+
         function closeBatchKeyModal() { batchKeyModal.classList.add('hidden'); }
-        
+
         async function handleBatchModalConfirm() {
             batchModalError.textContent = '';
             const count = parseInt(batchKeyCount.value, 10);
@@ -757,12 +894,12 @@
                 batchModalError.textContent = 'Count must be between 1 and 100.';
                 return;
             }
-            
+
             setLoading(batchModalConfirmBtn, true, 'Generating...');
-            
+
             let permissions = [];
             batchPermCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
-            
+
             const payload = {
                 count: count,
                 prefix: batchKeyPrefix.value.trim(),
@@ -771,7 +908,7 @@
                 expiry: batchKeyExpiry.value || null,
                 permissions: permissions
             };
-            
+
             const result = await apiRequest('/admin/batch_add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (result.success) {
                 await loadKeys();
@@ -788,7 +925,7 @@
             historyModalTitle.textContent = `Search History for: ${pin}`;
             historyModalBody.innerHTML = '<p>Loading...</p>';
             historyModal.classList.remove('hidden');
-            
+
             const result = await apiRequest(`/admin/history?pin=${pin}`);
             if (result.success && result.history) {
                 if (result.history.length === 0) {
@@ -811,14 +948,14 @@
         loginBtn.addEventListener('click', handleLogin);
         passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
         logoutBtn.addEventListener('click', handleLogout);
-        
+
         // Dashboard triggers
         document.getElementById('tab-dashboard').addEventListener('click', loadDashboardStats);
 
         // Settings
         saveNoteBtn.addEventListener('click', handleSaveNote);
         apiHealthCheckBtn.addEventListener('click', handleApiHealthCheck);
-        
+
         // Key Modals
         addKeyBtn.addEventListener('click', () => openKeyModal('add'));
         batchAddKeyBtn.addEventListener('click', openBatchKeyModal);
@@ -826,10 +963,10 @@
         modalConfirmBtn.addEventListener('click', handleModalConfirm);
         batchModalCancelBtn.addEventListener('click', closeBatchKeyModal);
         batchModalConfirmBtn.addEventListener('click', handleBatchModalConfirm);
-        
+
         // History Modal
         historyModalCloseBtn.addEventListener('click', closeHistoryModal);
-        
+
         // User Search
         userSearchBtn.addEventListener('click', () => loadUsers(userSearchInput.value));
         userSearchClearBtn.addEventListener('click', () => {
@@ -841,8 +978,9 @@
         // --- Initial Load ---
         showLogin();
         apiRequest('/admin/keys').then(result => {
-             if (result.success) showDashboard();
+            if (result.success) showDashboard();
         });
     </script>
 </body>
+
 </html>
