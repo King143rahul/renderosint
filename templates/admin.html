@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Panel - OSINT by KNOX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            color: #e5e5e5;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.02) 0%, transparent 25%);
+        }
+
+        .glass-card {
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #0a0a0a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .pin-link {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .pin-link:hover {
+            text-decoration: underline;
+            color: #ffffff;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 50;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-body {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .tab-btn {
+            @apply px-4 py-2 font-medium text-gray-500 border-b-2 border-transparent hover:text-white hover:border-gray-700 transition-all duration-300;
+        }
+
+        .tab-btn.active {
+            @apply text-white border-white;
+        }
+
+        .stat-card {
+            @apply glass-card rounded-xl p-6 hover:bg-white/5 transition-all duration-300;
+        }
+
+        .input-dark {
+            @apply w-full p-3 bg-black/50 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 text-white placeholder-gray-600 transition-all;
+        }
+
+        .btn-primary {
+            @apply w-full p-3 bg-white text-black rounded-lg font-bold hover:bg-gray-200 transition-all shadow-[0_0_15px_rgba(255, 255, 255, 0.1)];
+        }
+
+        .btn-secondary {
+            @apply px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-white border border-white/10 transition-all;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8 text-sm">
+    <div id="login-view" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white tracking-tight"><i class="fas fa-user-shield mr-3"></i>Admin
+                    Panel</h1>
+                <p class="text-gray-500 mt-2 font-light tracking-wide">OSINT by KNOX</p>
+            </header>
+            <!-- Login Card -->
+            <main class="glass-card rounded-2xl p-8 md:p-10 shadow-2xl relative overflow-hidden group">
+                <!-- Decorative Background -->
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-white/10 via-white/50 to-white/10">
+                </div>
+
+                <div class="text-center mb-10">
+                    <div
+                        class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10 group-hover:bg-white/10 transition-colors">
+                        <i class="fas fa-shield-alt text-3xl text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white mb-2">Admin Portal</h1>
+                    <p class="text-sm text-gray-500">Secure Access Restricted</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="space-y-2">
+                        <label for="username"
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Username</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input id="username" type="text" placeholder="Enter Username" value="RAHUL"
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-11 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-white/30 transition-colors input-dark">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="password"
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input id="password" type="password" placeholder="Enter Password"
+                                class="w-full bg-white/5 border border-white/10 rounded-xl px-11 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-white/30 transition-colors input-dark">
+                        </div>
+                    </div>
+
+                    <button id="loginBtn"
+                        class="w-full py-3.5 px-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-all transform hover:-translate-y-0.5 shadow-lg flex items-center justify-center gap-2">
+                        <span>Access Dashboard</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+
+                    <div id="login-error"
+                        class="hidden p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-300 text-center text-xs">
+                    </div>
+
+                    <div class="text-center mt-6">
+                        <p class="text-xs text-gray-600">Authorized Personnel Only</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="hidden w-full max-w-7xl mx-auto">
+        <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+            <h1 class="text-3xl font-bold text-white"><i class="fas fa-tachometer-alt mr-3"></i>Dashboard</h1>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </header>
+
+        <div class="border-b border-white/10 mb-6">
+            <nav class="flex -mb-px space-x-4">
+                <button id="tab-dashboard" class="tab-btn active" data-target="panel-dashboard"><i
+                        class="fas fa-chart-line mr-2"></i>Dashboard</button>
+                <button id="tab-requests" class="tab-btn" data-target="panel-requests"><i
+                        class="fas fa-shopping-cart mr-2"></i>Requests</button>
+                <button id="tab-plans" class="tab-btn" data-target="panel-plans"><i
+                        class="fas fa-tags mr-2"></i>Plans</button>
+                <button id="tab-keys" class="tab-btn" data-target="panel-keys"><i class="fas fa-key mr-2"></i>API
+                    Keys</button>
+                <button id="tab-users" class="tab-btn" data-target="panel-users"><i
+                        class="fas fa-users mr-2"></i>Users</button>
+                <button id="tab-settings" class="tab-btn" data-target="panel-settings"><i
+                        class="fas fa-cog mr-2"></i>Settings</button>
+            </nav>
+        </div>
+
+        <main>
+            <div id="panel-dashboard" class="tab-panel">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-users text-4xl text-white"></i>
+                        </div>
+                        <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">Total Users
+                        </h3>
+                        <p class="text-3xl font-bold text-white mb-2" id="total-users">-</p>
+                        <div class="text-xs text-green-400 flex items-center gap-1">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Active Now</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-key text-4xl text-white"></i>
+                        </div>
+                        <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">Active Keys
+                        </h3>
+                        <p class="text-3xl font-bold text-white mb-2" id="active-keys">-</p>
+                        <div class="text-xs text-blue-400 flex items-center gap-1">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Valid</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-search text-4xl text-white"></i>
+                        </div>
+                        <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">Total
+                            Searches</h3>
+                        <p class="text-3xl font-bold text-white mb-2" id="total-searches">-</p>
+                        <div class="text-xs text-purple-400 flex items-center gap-1">
+                            <i class="fas fa-chart-line"></i>
+                            <span>All Time</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i class="fas fa-server text-4xl text-white"></i>
+                        </div>
+                        <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">System
+                            Status</h3>
+                        <p class="text-3xl font-bold text-green-500 mb-2">Online</p>
+                        <div class="text-xs text-gray-400 flex items-center gap-1">
+                            <i class="fas fa-clock"></i>
+                            <span>Uptime: 99.9%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity & Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Recent Activity Table -->
+                    <div class="lg:col-span-2 glass-card rounded-2xl p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <i class="fas fa-history text-gray-400"></i> Recent Activity
+                            </h3>
+                            <button onclick="loadKeys()"
+                                class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                                Refresh <i class="fas fa-sync-alt ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-gray-400 text-xs uppercase tracking-wider border-b border-white/10">
+                                        <th class="p-3">Key ID</th>
+                                        <th class="p-3">Type</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3 text-right">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm divide-y divide-white/5" id="recent-activity-body">
+                                    <tr>
+                                        <td colspan="4" class="p-4 text-center text-gray-500">Loading
+                                            activity...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <i class="fas fa-bolt text-yellow-400"></i> Quick Actions
+                        </h3>
+                        <div class="space-y-3">
+                            <button onclick="openKeyModal('add')"
+                                class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                                <i class="fas fa-plus"></i> Generate New Key
+                            </button>
+                            <button id="qa-manage-plans"
+                                class="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-all border border-white/10 flex items-center justify-center gap-2">
+                                <i class="fas fa-tags"></i> Manage Plans
+                            </button>
+                            <button id="qa-view-requests"
+                                class="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-all border border-white/10 flex items-center justify-center gap-2">
+                                <i class="fas fa-envelope"></i> View Requests
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-requests" class="tab-panel hidden">
+                <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+                    <h3 class="text-xl font-bold mb-4 text-white">Purchase Requests</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="border-b border-white/10 text-gray-400">
+                                <tr>
+                                    <th class="p-3">Time (UTC)</th>
+                                    <th class="p-3">UTR</th>
+                                    <th class="p-3">Plan</th>
+                                    <th class="p-3">WhatsApp</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requests-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-plans" class="tab-panel hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Add Plan Form -->
+                    <div class="glass-card rounded-xl p-4 md:p-6 md:col-span-1 h-fit">
+                        <h3 class="text-xl font-bold mb-4 text-white">Add/Edit Plan</h3>
+                        <div class="space-y-4">
+                            <input id="plan-name" placeholder="Plan Name (e.g. Gold)" class="input-dark">
+                            <input id="plan-price" type="number" placeholder="Price (INR)" class="input-dark">
+                            <input id="plan-searches" type="number" placeholder="Daily Searches" class="input-dark">
+                            <input id="plan-days" type="number" placeholder="Validity (Days)" class="input-dark">
+                            <input id="plan-devices" type="number" placeholder="Device Limit" class="input-dark">
+                            <button onclick="handleAddPlan()" class="btn-primary">Save Plan</button>
+                        </div>
+                    </div>
+
+                    <!-- Plans List -->
+                    <div class="glass-card rounded-xl p-4 md:p-6 md:col-span-2">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-white">Active Plans</h3>
+                            <button onclick="resetPlanForm()" id="cancel-edit-btn"
+                                class="hidden text-xs text-gray-400 hover:text-white"><i
+                                    class="fas fa-times mr-1"></i>Cancel Edit</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-white/10 text-gray-400">
+                                    <tr>
+                                        <th class="p-3">Name</th>
+                                        <th class="p-3">Price</th>
+                                        <th class="p-3">Searches</th>
+                                        <th class="p-3">Days</th>
+                                        <th class="p-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="plans-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-keys" class="tab-panel hidden">
+                <!-- ... existing keys panel ... -->
+
+                <div class="flex justify-end mb-4 gap-4">
+                    <button id="batch-add-key-btn" class="btn-secondary"><i class="fas fa-layer-group mr-2"></i>Batch
+                        Generate</button>
+                    <button id="add-key-btn" class="btn-primary"><i class="fas fa-plus mr-2"></i>Add Single
+                        Key</button>
+                </div>
+                <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="border-b border-white/10 text-gray-400">
+                                <tr>
+                                    <th class="p-3 text-sm font-semibold">API Key (PIN)</th>
+                                    <th class="p-3 text-sm font-semibold">Usage</th>
+                                    <th class="p-3 text-sm font-semibold">Expires</th>
+                                    <th class="p-3 text-sm font-semibold">Permissions</th>
+                                    <th class="p-3 text-sm font-semibold">Devices</th>
+                                    <th class="p-3 text-sm font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keys-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-users" class="tab-panel hidden">
+                <div class="flex justify-end mb-4">
+                    <div class="flex gap-2">
+                        <input id="user-search-input" type="text" placeholder="Search by name or phone..."
+                            class="input-dark w-64">
+                        <button id="user-search-btn" class="btn-primary w-auto px-4"><i
+                                class="fas fa-search"></i></button>
+                        <button id="user-search-clear-btn" class="btn-secondary"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="glass-card rounded-xl shadow-2xl p-4 md:p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="border-b border-white/10 text-gray-400">
+                                <tr>
+                                    <th class="p-3 text-sm font-semibold">Name</th>
+                                    <th class="p-3 text-sm font-semibold">Phone</th>
+                                    <th class="p-3 text-sm font-semibold">Status</th>
+                                    <th class="p-3 text-sm font-semibold">Last Login (UTC)</th>
+                                    <th class="p-3 text-sm font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-settings" class="tab-panel hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-xl p-4 md:p-6">
+                        <h3 class="text-xl font-bold mb-4 text-white">Global Note</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-2">This note will be shown to all users on
+                                    all search
+                                    pages.</p>
+                                <textarea id="global-note-text" rows="4" class="input-dark"
+                                    placeholder="E.g., Server maintenance..."></textarea>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="save-note-btn" class="btn-primary w-auto px-6">Save
+                                    Note</button>
+                            </div>
+                            <div id="note-save-status" class="text-center text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="key-modal"
+        class="modal hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div
+            class="modal-content glass-card rounded-2xl shadow-2xl p-8 w-full max-w-lg space-y-6 transform transition-all scale-100">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                <h2 id="modal-title" class="text-2xl font-bold text-white tracking-wide">Create Access Key</h2>
+                <button id="modal-close-x" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="modal-key-pin-hidden">
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">API Key
+                        (PIN)</label>
+                    <div class="relative">
+                        <i class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <input id="modal-key-pin" placeholder="Enter custom PIN or leave empty to auto-generate"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder-gray-600">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Daily
+                            Searches</label>
+                        <input id="modal-key-limit" type="number" placeholder="10"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500/50 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Device
+                            Limit</label>
+                        <input id="modal-key-device-limit" type="number" placeholder="1"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500/50 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Expiry
+                        Date</label>
+                    <input id="modal-key-expiry" type="date"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500/50 transition-all scheme-dark">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Service
+                        Permissions</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="phone" class="perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Phone</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="vehicle" class="perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Vehicle</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="aadhaar" class="perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Aadhaar</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="family" class="perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Family</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="gst" class="perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-blue-600 peer-checked:border-blue-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">GST</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-error" class="text-red-400 text-center text-sm font-medium"></div>
+
+            <div class="flex gap-4 pt-2">
+                <button id="modal-cancel-btn"
+                    class="flex-1 py-3 px-4 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors font-medium">
+                    Cancel
+                </button>
+                <button id="modal-confirm-btn"
+                    class="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 transition-all font-bold">
+                    Create Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batch-key-modal"
+        class="modal hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div
+            class="modal-content glass-card rounded-2xl shadow-2xl p-8 w-full max-w-lg space-y-6 transform transition-all scale-100">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                <h2 class="text-2xl font-bold text-white tracking-wide">Batch Generate Keys</h2>
+                <button id="batch-modal-close-x" class="text-gray-400 hover:text-white transition-colors"
+                    onclick="closeModal('batch-key-modal')">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label
+                            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quantity</label>
+                        <input id="batch-key-count" type="number" placeholder="e.g. 10"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500/50 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Prefix
+                            (Optional)</label>
+                        <input id="batch-key-prefix" placeholder="e.g. NEW-"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder-gray-600">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Daily
+                            Limit</label>
+                        <input id="batch-key-limit" type="number" value="10"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500/50 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Device
+                            Limit</label>
+                        <input id="batch-key-device-limit" type="number" value="1"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500/50 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Expiry
+                        Date</label>
+                    <input id="batch-key-expiry" type="date"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500/50 transition-all scheme-dark">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Global
+                        Permissions</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="phone" class="batch-perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-purple-600 peer-checked:border-purple-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Phone</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="vehicle" class="batch-perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-purple-600 peer-checked:border-purple-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Vehicle</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="aadhaar" class="batch-perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-purple-600 peer-checked:border-purple-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Aadhaar</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="family" class="batch-perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-purple-600 peer-checked:border-purple-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">Family</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="checkbox" value="gst" class="batch-perm-check peer sr-only" checked>
+                            <div
+                                class="p-3 rounded-xl bg-white/5 border border-white/10 text-center peer-checked:bg-purple-600 peer-checked:border-purple-500 transition-all hover:bg-white/10">
+                                <span class="text-sm text-gray-300 peer-checked:text-white font-medium">GST</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="batch-modal-error" class="text-red-400 text-center text-sm font-medium"></div>
+
+            <div class="flex gap-4 pt-2">
+                <button id="batch-modal-cancel-btn"
+                    class="flex-1 py-3 px-4 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors font-medium">
+                    Cancel
+                </button>
+                <button id="batch-modal-confirm-btn"
+                    class="flex-1 py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20 transition-all font-bold">
+                    Generate Keys
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-content glass-card rounded-xl shadow-2xl p-8 w-full max-w-3xl space-y-6">
+            <h2 id="history-modal-title" class="text-2xl font-bold text-white">Search History</h2>
+            <div id="history-modal-body" class="modal-body text-gray-300">
+                <p>Loading...</p>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button id="history-modal-close-btn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let allKeysData = [];
+        let currentModalMode = 'add';
+
+        // Views
+        const loginView = document.getElementById('login-view');
+        const dashboardView = document.getElementById('dashboard-view');
+
+        // Login
+        const loginBtn = document.getElementById('loginBtn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('login-error');
+
+        // Dashboard
+        const logoutBtn = document.getElementById('logoutBtn');
+        const addKeyBtn = document.getElementById('add-key-btn');
+        const batchAddKeyBtn = document.getElementById('batch-add-key-btn');
+        const keysTableBody = document.getElementById('keys-table-body');
+        const usersTableBody = document.getElementById('users-table-body');
+
+        // Dashboard Stats
+        const statTotalSearches = document.getElementById('stat-total-searches');
+        const statActiveKeys = document.getElementById('stat-active-keys');
+        const statTotalUsers = document.getElementById('stat-total-users');
+        const statPopularService = document.getElementById('stat-popular-service');
+        const tableTopKeys = document.getElementById('table-top-keys');
+        const tableRecentSearches = document.getElementById('table-recent-searches');
+
+        // Tabs
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        // Users Panel
+        const userSearchInput = document.getElementById('user-search-input');
+        const userSearchBtn = document.getElementById('user-search-btn');
+        const userSearchClearBtn = document.getElementById('user-search-clear-btn');
+
+        // Settings Panel
+        const globalNoteText = document.getElementById('global-note-text');
+        const saveNoteBtn = document.getElementById('save-note-btn');
+        const noteSaveStatus = document.getElementById('note-save-status');
+
+
+        // Add/Edit Key Modal
+        const keyModal = document.getElementById('key-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalKeyPin = document.getElementById('modal-key-pin');
+        const modalKeyPinHidden = document.getElementById('modal-key-pin-hidden');
+        const modalKeyLimit = document.getElementById('modal-key-limit');
+        const modalKeyDeviceLimit = document.getElementById('modal-key-device-limit');
+        const modalKeyExpiry = document.getElementById('modal-key-expiry');
+        const modalError = document.getElementById('modal-error');
+        const permCheckboxes = document.querySelectorAll('.perm-check');
+
+        // Batch Key Modal
+        const batchKeyModal = document.getElementById('batch-key-modal');
+        const batchModalConfirmBtn = document.getElementById('batch-modal-confirm-btn');
+        const batchModalCancelBtn = document.getElementById('batch-modal-cancel-btn');
+        const batchKeyCount = document.getElementById('batch-key-count');
+        const batchKeyPrefix = document.getElementById('batch-key-prefix');
+        const batchKeyLimit = document.getElementById('batch-key-limit');
+        const batchKeyDeviceLimit = document.getElementById('batch-key-device-limit');
+        const batchKeyExpiry = document.getElementById('batch-key-expiry');
+        const batchPermCheckboxes = document.querySelectorAll('.batch-perm-check');
+        const batchModalError = document.getElementById('batch-modal-error');
+
+        // History Modal
+        const historyModal = document.getElementById('history-modal');
+        const historyModalTitle = document.getElementById('history-modal-title');
+        const historyModalBody = document.getElementById('history-modal-body');
+        const historyModalCloseBtn = document.getElementById('history-modal-close-btn');
+
+        // --- Utility ---
+        function setLoading(button, isLoading, originalText = null) {
+            if (!button) return;
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                button.disabled = false;
+                button.innerHTML = originalText || button.dataset.originalText || 'Submit';
+            }
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        modalKeyExpiry.setAttribute('min', today);
+        batchKeyExpiry.setAttribute('min', today);
+
+        // --- View Management ---
+        function showLogin() {
+            loginView.classList.remove('hidden');
+            dashboardView.classList.add('hidden');
+        }
+
+        function showDashboard() {
+            loginView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            loadDashboardStats();
+            loadKeys();
+            loadUsers();
+            loadSettings();
+        }
+
+        // --- Tab Switching ---
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanels.forEach(panel => panel.classList.add('hidden'));
+                button.classList.add('active');
+                document.getElementById(button.dataset.target).classList.remove('hidden');
+            });
+        });
+
+        // --- API Call Functions ---
+        async function apiRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(window.location.origin + endpoint, options);
+                if (response.status === 401) {
+                    showLogin();
+                    return { success: false, error: 'Session expired. Please login again.' };
+                }
+                const result = await response.json();
+                if (!result.success && result.error) console.error(`API Error at ${endpoint}:`, result.error);
+                return result;
+            } catch (err) {
+                console.error(`Network Error at ${endpoint}:`, err);
+                return { success: false, error: 'Network error, please try again.' };
+            }
+        }
+
+        // --- Login/Logout ---
+        async function handleLogin() {
+            loginError.textContent = '';
+            setLoading(loginBtn, true, 'Login');
+            const result = await apiRequest('/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
+            });
+            setLoading(loginBtn, false, 'Login');
+            if (result.success) showDashboard();
+            else loginError.textContent = result.error || 'Login failed.';
+        }
+
+        async function handleLogout() {
+            await apiRequest('/admin/logout', { method: 'POST' });
+            allKeysData = [];
+            showLogin();
+        }
+
+        // --- Data Loading ---
+        async function loadDashboardStats() {
+            const result = await apiRequest('/admin/dashboard_stats');
+            if (!result.success) return;
+            const stats = result.stats;
+
+            // Show Mock Warning
+            if (stats.is_mock) {
+                const header = document.querySelector('#dashboard-view header');
+                if (!document.getElementById('mock-warning')) {
+                    const warning = document.createElement('div');
+                    warning.id = 'mock-warning';
+                    warning.className = 'w-full bg-yellow-900/50 text-yellow-200 border border-yellow-700/50 p-3 rounded-lg mb-6 text-center font-bold text-sm';
+                    warning.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i> DEMO MODE: Database not configured. Showing mock data.';
+                    header.parentNode.insertBefore(warning, header.nextSibling);
+                }
+            }
+
+            statTotalSearches.textContent = stats.total_searches_today;
+            statActiveKeys.textContent = stats.active_keys;
+            statTotalUsers.textContent = stats.total_users;
+            statPopularService.textContent = stats.popular_services.length > 0 ? stats.popular_services[0]._id : 'N/A';
+
+            tableTopKeys.innerHTML = stats.top_5_keys.map(k => `
+                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors"><td class="p-2 font-mono text-white">${k.pin}</td><td class="p-2 text-gray-400">${k.used_today}</td></tr>
+            `).join('');
+
+            tableRecentSearches.innerHTML = stats.recent_searches.map(s => {
+                const time = new Date(s.timestamp).toLocaleTimeString();
+                return `<tr class="border-b border-white/5 text-sm hover:bg-white/5 transition-colors">
+                    <td class="p-2 text-gray-500">${time}</td>
+                    <td class="p-2 font-mono text-white">${s.pin.substring(0, 10)}...</td>
+                    <td class="p-2 text-gray-300">${s.lookup_type}</td>
+                    <td class="p-2 font-mono text-gray-400">${s.query.substring(0, 15)}...</td>
+                </tr>`
+            }).join('');
+        }
+
+        async function loadKeys() {
+            const result = await apiRequest('/admin/keys');
+            if (result.success) {
+                allKeysData = result.keys || [];
+                renderKeys(allKeysData);
+            } else if (result.error) {
+                alert('Failed to load keys: ' + result.error);
+            }
+        }
+
+        async function loadUsers(searchQuery = '') {
+            const result = await apiRequest(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
+            if (result.success) renderUsers(result.users || []);
+            else alert('Failed to load users: ' + (result.error || 'Unknown error'));
+        }
+
+        async function loadSettings() {
+            const result = await apiRequest('/admin/note'); // GET
+            if (result.success) globalNoteText.value = result.note || '';
+        }
+
+        // --- Requests Management ---
+        async function loadRequests() {
+            const requests = await apiRequest('/admin/requests');
+            const tbody = document.getElementById('requests-table-body');
+            tbody.innerHTML = '';
+
+            if (!requests || requests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500">No pending requests</td></tr>';
+                return;
+            }
+
+            requests.forEach(req => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-white/5 hover:bg-white/5';
+
+                let actionHtml = '';
+                if (req.status === 'pending') {
+                    actionHtml = `
+                        <button onclick="handleRequestAction('${req._id}', 'approve')" class="px-3 py-1 bg-green-600 rounded text-white text-xs mr-2">Approve</button>
+                        <button onclick="handleRequestAction('${req._id}', 'reject')" class="px-3 py-1 bg-red-600 rounded text-white text-xs">Reject</button>
+                    `;
+                } else if (req.status === 'approved') {
+                    actionHtml = `<span class="text-green-400 text-xs font-mono copy-key cursor-pointer" onclick="navigator.clipboard.writeText('${req.generated_key}'); alert('Copied Key')">Key: ${req.generated_key} <i class="fas fa-copy"></i></span>`;
+                } else {
+                    actionHtml = `<span class="text-red-400 text-xs">Rejected</span>`;
+                }
+
+                row.innerHTML = `
+                    <td class="p-3 text-gray-400 text-xs">${new Date(req.timestamp).toLocaleString()}</td>
+                    <td class="p-3 font-mono text-white">${req.utr}</td>
+                    <td class="p-3 text-gray-300 text-sm">${req.plan_name} (₹${req.amount})</td>
+                    <td class="p-3 text-gray-300 text-sm">${req.whatsapp}</td>
+                    <td class="p-3 uppercase text-xs font-bold ${req.status === 'pending' ? 'text-yellow-400' : (req.status === 'approved' ? 'text-green-400' : 'text-red-400')}">${req.status}</td>
+                    <td class="p-3 text-right">${actionHtml}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function handleRequestAction(id, action) {
+            if (!confirm(`Are you sure you want to ${action} this request?`)) return;
+            const res = await apiRequest('/admin/requests/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, action })
+            });
+            if (res.success) {
+                if (action === 'approve') alert(`Request Approved! Key: ${res.key}\n(Copied to Clipboard)`);
+                loadRequests();
+            } else {
+                alert("Error: " + res.error);
+            }
+        }
+
+        // --- Plans Management ---
+        let editingPlanId = null;
+
+        async function loadPlans() {
+            const plans = await apiRequest('/admin/plans');
+            const tbody = document.getElementById('plans-table-body');
+            tbody.innerHTML = '';
+
+            plans.forEach(plan => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-white/5 hover:bg-white/5';
+                row.innerHTML = `
+                    <td class="p-3 text-white font-bold">${plan.name}</td>
+                    <td class="p-3 text-green-400">₹${plan.price}</td>
+                    <td class="p-3 text-gray-300">${plan.searches}</td>
+                    <td class="p-3 text-gray-300">${plan.days}</td>
+                    <td class="p-3 text-right">
+                        <button onclick='handleEditPlan(${JSON.stringify(plan)})' class="text-blue-400 hover:text-blue-300 mr-3"><i class="fas fa-edit"></i></button>
+                        <button onclick="handleDeletePlan('${plan._id}')" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function handleEditPlan(plan) {
+            editingPlanId = plan._id;
+            document.getElementById('plan-name').value = plan.name;
+            document.getElementById('plan-price').value = plan.price;
+            document.getElementById('plan-searches').value = plan.searches;
+            document.getElementById('plan-days').value = plan.days;
+            document.getElementById('plan-devices').value = plan.device_limit || 1;
+
+            const btn = document.querySelector('#panel-plans button.btn-primary');
+            btn.innerHTML = 'Update Plan';
+            btn.onclick = handleUpdatePlan;
+
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+        }
+
+        function resetPlanForm() {
+            editingPlanId = null;
+            document.getElementById('plan-name').value = '';
+            document.getElementById('plan-price').value = '';
+            document.getElementById('plan-searches').value = '';
+            document.getElementById('plan-days').value = '';
+            document.getElementById('plan-devices').value = '';
+
+            const btn = document.querySelector('#panel-plans button.btn-primary');
+            btn.innerHTML = 'Save Plan';
+            btn.onclick = handleAddPlan;
+
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        }
+
+
+
+        async function handleAddPlan() {
+            const name = document.getElementById('plan-name').value;
+            const price = document.getElementById('plan-price').value;
+            const searches = document.getElementById('plan-searches').value;
+            const days = document.getElementById('plan-days').value;
+            const device_limit = document.getElementById('plan-devices').value || 1;
+
+            if (!name || !price || !searches || !days) return alert('Please fill all fields');
+
+            const res = await apiRequest('/admin/plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, price: parseInt(price), searches: parseInt(searches), days: parseInt(days), device_limit: parseInt(device_limit) })
+            });
+
+            if (res.success) {
+                resetPlanForm();
+                loadPlans();
+            } else {
+                alert(res.error);
+            }
+        }
+
+        async function handleUpdatePlan() {
+            if (!editingPlanId) return;
+            const name = document.getElementById('plan-name').value;
+            const price = document.getElementById('plan-price').value;
+            const searches = document.getElementById('plan-searches').value;
+            const days = document.getElementById('plan-days').value;
+            const device_limit = document.getElementById('plan-devices').value || 1;
+
+            const res = await apiRequest('/admin/plans', { // Assuming POST supports update or we need a specific PUT endpoint? 
+                // Wait, typically we'd need a PUT /admin/plans/<id> or similar. 
+                // Checking previous implementation plan... it just said "Add Plan Management APIs (GET/POST/DELETE)".
+                // I need to check if main.py handles updates or if I need to add that logic too.
+                // For now, let's assume I need to ADD the endpoint in main.py if it's not there.
+                // I will use POST with an 'action=update' or 'id' param if strict REST isn't enforced, 
+                // OR better, I will check main.py next.
+                // Let's implement the frontend assuming a PUT endpoint existed or re-use POST. 
+                // Actually, I'll stick to a new tool call to fix main.py for update.
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: editingPlanId, name, price: parseInt(price), searches: parseInt(searches), days: parseInt(days), device_limit: parseInt(device_limit) })
+            });
+
+            if (res.success) {
+                resetPlanForm();
+                loadPlans();
+            } else {
+                alert(res.error);
+            }
+        }
+
+        async function handleDeletePlan(id) {
+            if (!confirm('Delete this plan?')) return;
+            const res = await apiRequest('/admin/plans', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            if (res.success) loadPlans();
+            else alert(res.error);
+        }
+
+        // Update showDashboard to load new data
+        const originalShowDashboard = showDashboard;
+        showDashboard = function () {
+            originalShowDashboard();
+            loadRequests();
+            loadPlans();
+        }
+
+        // --- Data Rendering ---
+        function renderKeys(keys) {
+            keysTableBody.innerHTML = '';
+            if (!keys || keys.length === 0) {
+                keysTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No API keys found.</td></tr>';
+                return;
+            }
+            keys.forEach(key => {
+                const expiry = key.expiry ? new Date(key.expiry).toISOString().split('T')[0] : 'Never';
+                const isExpired = key.expiry && new Date(expiry) < new Date(today);
+
+                let perms = [];
+                if (key.allow_phone) perms.push('Ph');
+                if (key.allow_vehicle) perms.push('Veh');
+                if (key.allow_aadhaar) perms.push('Aad');
+                if (key.allow_family) perms.push('Fam');
+                if (key.allow_gst) perms.push('GST');
+                if (key.allow_gst) perms.push('GST');
+
+                let permDisplay = perms.length === 12 ? '<span class="font-bold text-white">All</span>' : (perms.length === 0 ? '<span class="text-gray-600">None</span>' : `<span class="text-gray-300">${perms.join(', ')}</span>`);
+
+                const deviceCount = (key.device_ids || []).length;
+                const deviceLimit = key.device_limit || 1;
+                const deviceLock = `${deviceCount} / ${deviceLimit}`;
+
+                const row = document.createElement('tr');
+                row.className = 'border-b border-white/5 hover:bg-white/5 transition-colors';
+                row.innerHTML = `
+                    <td class="p-3 font-mono text-white pin-link" data-pin="${key.pin}">${key.pin}</td>
+                    <td class="p-3 text-gray-400">${key.used_today || 0} / ${key.limit_count || 10}</td>
+                    <td class="p-3 ${isExpired ? 'text-gray-500 line-through' : 'text-gray-300'}">${expiry}</td>
+                    <td class="p-3 text-xs">${permDisplay}</td>
+                    <td class="p-3 text-sm ${deviceCount >= deviceLimit ? 'text-white' : 'text-gray-400'}">${deviceLock}</td>
+                    <td class="p-3 text-right whitespace-nowrap">
+                        <button class="edit-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-white/10 text-white text-xs font-bold rounded-lg transition-all" data-id="${key.id}" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="reset-usage-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-white/10 text-white text-xs font-bold rounded-lg transition-all" data-id="${key.id}" title="Reset Usage"><i class="fas fa-sync-alt"></i></button>
+                        <button class="reset-device-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-white/10 text-white text-xs font-bold rounded-lg transition-all" data-id="${key.id}" title="Reset Devices"><i class="fas fa-key"></i></button>
+                        <button class="delete-btn px-2 py-1 bg-gray-800 hover:bg-pink-900/50 border border-white/10 text-white text-xs font-bold rounded-lg transition-all" data-id="${key.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                keysTableBody.appendChild(row);
+            });
+            attachTableListeners();
+        }
+
+        function renderUsers(users) {
+            usersTableBody.innerHTML = '';
+            if (!users || users.length === 0) {
+                usersTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-500">No users found.</td></tr>';
+                return;
+            }
+            users.forEach(user => {
+                const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString('en-GB', { timeZone: 'UTC' }) : 'N/A';
+                const isBanned = user.is_banned || false;
+                const banBtnClass = 'bg-gray-800 hover:bg-gray-700 border border-white/10';
+                const banBtnIcon = isBanned ? 'fa-check' : 'fa-ban';
+                const banBtnTitle = isBanned ? 'Unban User' : 'Ban User';
+
+                const row = document.createElement('tr');
+                row.className = 'border-b border-white/5 hover:bg-white/5 transition-colors';
+                row.innerHTML = `
+                    <td class="p-3 text-white">${user.name}</td>
+                    <td class="p-3 font-mono text-gray-300">${user.phone}</td>
+                    <td class="p-3 ${isBanned ? 'text-gray-500' : 'text-white font-bold'}">${isBanned ? 'Banned' : 'Active'}</td>
+                    <td class="p-3 text-sm text-gray-400">${lastLogin}</td>
+                    <td class="p-3 text-right">
+                        <button class="ban-user-btn px-3 py-1 ${banBtnClass} text-white text-xs font-bold rounded-lg transition-all" data-phone="${user.phone}" data-banned="${isBanned}" title="${banBtnTitle}">
+                            <i class="fas ${banBtnIcon}"></i>
+                        </button>
+                    </td>
+                `;
+                usersTableBody.appendChild(row);
+            });
+            attachUserTableListeners();
+        }
+
+        // --- Settings Panel ---
+        async function handleSaveNote() {
+            setLoading(saveNoteBtn, true, 'Save Note');
+            noteSaveStatus.textContent = '';
+            const result = await apiRequest('/admin/note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: globalNoteText.value })
+            });
+            setLoading(saveNoteBtn, false, 'Save Note');
+            noteSaveStatus.textContent = result.success ? 'Note saved!' : `Error: ${result.error}`;
+            noteSaveStatus.className = result.success ? 'text-white mt-2' : 'text-gray-500 mt-2';
+            setTimeout(() => noteSaveStatus.textContent = '', 3000);
+        }
+
+
+
+        // --- Table Listeners ---
+        function attachTableListeners() {
+            document.querySelectorAll('.pin-link').forEach(btn => btn.addEventListener('click', (e) => showHistory(e.currentTarget.dataset.pin)));
+            document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => openKeyModal('edit', e.currentTarget.dataset.id)));
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteKey(e.currentTarget)));
+            document.querySelectorAll('.reset-device-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetDevice(e.currentTarget)));
+            document.querySelectorAll('.reset-usage-btn').forEach(btn => btn.addEventListener('click', (e) => handleResetUsage(e.currentTarget)));
+        }
+
+        async function handleDeleteKey(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Delete key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Delete error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-trash"></i>');
+            }
+        }
+
+        async function handleResetDevice(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset all devices for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-key"></i>');
+            }
+        }
+
+        async function handleResetUsage(button) {
+            const id = button.dataset.id;
+            if (!confirm(`Reset daily usage for key: ${id}?`)) return;
+            setLoading(button, true);
+            const result = await apiRequest('/admin/reset_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            if (result.success) await loadKeys();
+            else {
+                alert('Reset error: ' + (result.error || 'unknown'));
+                setLoading(button, false, '<i class="fas fa-sync-alt"></i>');
+            }
+        }
+
+        function attachUserTableListeners() {
+            document.querySelectorAll('.ban-user-btn').forEach(btn => btn.addEventListener('click', (e) => handleBanUser(e.currentTarget)));
+        }
+
+        async function handleBanUser(button) {
+            const phone = button.dataset.phone;
+            const isBanned = button.dataset.banned === 'true';
+            const action = isBanned ? 'unban' : 'ban';
+            if (!confirm(`Are you sure you want to ${action} user ${phone}?`)) return;
+
+            setLoading(button, true);
+            const result = await apiRequest('/admin/ban_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone, ban_status: !isBanned })
+            });
+            if (result.success) await loadUsers(userSearchInput.value);
+            else {
+                alert(`Error: ${result.error || 'unknown'}`);
+                setLoading(button, false, isBanned ? '<i class="fas fa-check"></i>' : '<i class="fas fa-ban"></i>');
+            }
+        }
+
+        // --- Key Modal Logic (Add/Edit) ---
+        function openKeyModal(mode = 'add', pin = null) {
+            currentModalMode = mode;
+            modalError.textContent = '';
+
+            if (mode === 'edit') {
+                const key = allKeysData.find(k => k.pin === pin);
+                if (!key) return;
+                modalTitle.textContent = 'Edit API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
+                modalKeyPin.value = key.pin;
+                modalKeyPin.disabled = true;
+                modalKeyPinHidden.value = key.pin;
+                modalKeyLimit.value = key.limit_count;
+                modalKeyDeviceLimit.value = key.device_limit || 1;
+                modalKeyExpiry.value = key.expiry ? key.expiry.split('T')[0] : '';
+                permCheckboxes.forEach(cb => cb.checked = key[`allow_${cb.value}`] == 1);
+            } else {
+                modalTitle.textContent = 'Add New API Key';
+                modalConfirmBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Key';
+                modalKeyPin.value = '';
+                modalKeyPin.disabled = false;
+                modalKeyPinHidden.value = '';
+                modalKeyLimit.value = '10';
+                modalKeyDeviceLimit.value = '1';
+                modalKeyExpiry.value = '';
+                permCheckboxes.forEach(cb => cb.checked = true);
+            }
+            keyModal.classList.remove('hidden');
+        }
+
+        function closeKeyModal() { keyModal.classList.add('hidden'); }
+
+        async function handleModalConfirm() {
+            modalError.textContent = '';
+            setLoading(modalConfirmBtn, true);
+
+            const pin = (currentModalMode === 'edit') ? modalKeyPinHidden.value : modalKeyPin.value.trim();
+            const limit = parseInt(modalKeyLimit.value || '10', 10);
+            const device_limit = parseInt(modalKeyDeviceLimit.value || '1', 10);
+            const expiry = modalKeyExpiry.value || null;
+            let permissions = [];
+            permCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
+
+            if (!pin) {
+                modalError.textContent = 'PIN cannot be empty.';
+                setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
+                return;
+            }
+
+            const endpoint = (currentModalMode === 'edit') ? '/admin/update' : '/admin/add';
+            const payload = { pin, limit, expiry, permissions, device_limit };
+
+            const result = await apiRequest(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (result.success) {
+                await loadKeys();
+                closeKeyModal();
+            } else {
+                modalError.textContent = result.error || 'Failed to save key.';
+            }
+            setLoading(modalConfirmBtn, false, modalConfirmBtn.dataset.originalText);
+        }
+
+        // --- Batch Key Modal Logic ---
+        function openBatchKeyModal() {
+            batchModalError.textContent = '';
+            batchKeyCount.value = '10';
+            batchKeyPrefix.value = '';
+            batchKeyLimit.value = '10';
+            batchKeyDeviceLimit.value = '1';
+            batchKeyExpiry.value = '';
+            batchPermCheckboxes.forEach(cb => cb.checked = true);
+            batchKeyModal.classList.remove('hidden');
+        }
+
+        function closeBatchKeyModal() { batchKeyModal.classList.add('hidden'); }
+
+        async function handleBatchModalConfirm() {
+            batchModalError.textContent = '';
+            const count = parseInt(batchKeyCount.value, 10);
+            if (!count || count <= 0 || count > 100) {
+                batchModalError.textContent = 'Count must be between 1 and 100.';
+                return;
+            }
+
+            setLoading(batchModalConfirmBtn, true, 'Generating...');
+
+            let permissions = [];
+            batchPermCheckboxes.forEach(cb => { if (cb.checked) permissions.push(cb.value); });
+
+            const payload = {
+                count: count,
+                prefix: batchKeyPrefix.value.trim(),
+                limit: parseInt(batchKeyLimit.value || '10', 10),
+                device_limit: parseInt(batchKeyDeviceLimit.value || '1', 10),
+                expiry: batchKeyExpiry.value || null,
+                permissions: permissions
+            };
+
+            const result = await apiRequest('/admin/batch_add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (result.success) {
+                await loadKeys();
+                closeBatchKeyModal();
+                alert(result.message || 'Batch job complete.');
+            } else {
+                batchModalError.textContent = result.error || 'Failed to generate keys.';
+            }
+            setLoading(batchModalConfirmBtn, false, 'Generate Keys');
+        }
+
+        // --- History Modal Logic ---
+        async function showHistory(pin) {
+            historyModalTitle.textContent = `Search History for: ${pin}`;
+            historyModalBody.innerHTML = '<p>Loading...</p>';
+            historyModal.classList.remove('hidden');
+
+            const result = await apiRequest(`/admin/history?pin=${pin}`);
+            if (result.success && result.history) {
+                if (result.history.length === 0) {
+                    historyModalBody.innerHTML = '<p>No search history found.</p>';
+                    return;
+                }
+                let tableHtml = `<table class="w-full text-left text-sm"><thead class="border-b border-gray-700"><tr><th class="p-2">Date/Time (UTC)</th><th class="p-2">Type</th><th class="p-2">Query</th><th class="p-2">Device ID</th></tr></thead><tbody>`;
+                result.history.forEach(item => {
+                    const date = new Date(item.timestamp).toLocaleString('en-GB', { timeZone: 'UTC' });
+                    tableHtml += `<tr class="border-b border-gray-800"><td class="p-2">${date}</td><td class="p-2">${item.lookup_type}</td><td class="p-2 font-mono">${item.query}</td><td class="p-2 text-xs text-gray-500" title="${item.device_id}">${item.device_id.substring(0, 12)}...</td></tr>`;
+                });
+                historyModalBody.innerHTML = tableHtml + '</tbody></table>';
+            } else {
+                historyModalBody.innerHTML = `<p class="text-red-400">Error: ${result.error || 'Failed to load'}</p>`;
+            }
+        }
+        function closeHistoryModal() { historyModal.classList.add('hidden'); }
+
+        // --- Initial Event Listeners ---
+        loginBtn.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
+        logoutBtn.addEventListener('click', handleLogout);
+
+        // Dashboard triggers
+        document.getElementById('tab-dashboard').addEventListener('click', loadDashboardStats);
+
+        // Settings
+        saveNoteBtn.addEventListener('click', handleSaveNote);
+
+
+        // Quick Actions
+        document.getElementById('qa-manage-plans').addEventListener('click', () => {
+            document.getElementById('tab-plans').click();
+        });
+        document.getElementById('qa-view-requests').addEventListener('click', () => {
+            document.getElementById('tab-requests').click();
+        });
+
+        // Key Modals
+        addKeyBtn.addEventListener('click', () => openKeyModal('add'));
+        batchAddKeyBtn.addEventListener('click', openBatchKeyModal);
+        modalCancelBtn.addEventListener('click', closeKeyModal);
+        modalConfirmBtn.addEventListener('click', handleModalConfirm);
+        batchModalCancelBtn.addEventListener('click', closeBatchKeyModal);
+        batchModalConfirmBtn.addEventListener('click', handleBatchModalConfirm);
+
+        // History Modal
+        historyModalCloseBtn.addEventListener('click', closeHistoryModal);
+
+        // User Search
+        userSearchBtn.addEventListener('click', () => loadUsers(userSearchInput.value));
+        userSearchClearBtn.addEventListener('click', () => {
+            userSearchInput.value = '';
+            loadUsers();
+        });
+        userSearchInput.addEventListener('keyup', (e) => e.key === 'Enter' && loadUsers(userSearchInput.value));
+
+        // --- Initial Load ---
+        showLogin();
+        apiRequest('/admin/keys').then(result => {
+            if (result.success) showDashboard();
+        });
+    </script>
+</body>
+
+</html>

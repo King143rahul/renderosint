@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - OSINT by KNOX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(0, 0%, 20%, 0.3) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(0, 0%, 10%, 0.5) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(0, 0%, 20%, 0.3) 0, transparent 50%);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            color: #000000;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(255, 255, 255, 0.3);
+            background: #e2e8f0;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .result-header {
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .result-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .result-item:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .result-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .result-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Background Elements -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-white/5 blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-white/5 blur-[100px]"></div>
+    </div>
+
+    <div class="w-full max-w-5xl mx-auto animate-slide-up">
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <a href="/"
+                    class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10">
+                    <i class="fas fa-arrow-left text-gray-400"></i>
+                </a>
+                <div>
+                    <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                        <i class="{{ icon_class }} text-gray-200"></i>
+                        {{ title }}
+                    </h1>
+                </div>
+            </div>
+            <div class="hidden md:block">
+                <span
+                    class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                    SECURE LOOKUP
+                </span>
+            </div>
+        </header>
+
+        <main class="glass-card rounded-2xl p-6 md:p-8 shadow-2xl">
+            <div id="globalNoteContainer" class="hidden mb-6"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8">
+                <div class="md:col-span-5">
+                    <div class="relative group">
+                        <i id="inputIcon"
+                            class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors"></i>
+
+                        <!-- Visual Prefix (Hidden by default) -->
+                        <span id="prefixContainer"
+                            class="hidden absolute left-10 top-1/2 -translate-y-1/2 text-gray-400 font-mono select-none pl-1"></span>
+
+                        <input id="numberInput" type="text" placeholder="{{ placeholder }}"
+                            class="input-field w-full p-4 pl-11 rounded-xl text-white placeholder-gray-500 focus:outline-none font-mono tracking-wide">
+                    </div>
+                </div>
+                <div class="md:col-span-5">
+                    <div class="relative group">
+                        <i
+                            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors"></i>
+                        <input id="pinInput" type="password" placeholder="Enter API Key"
+                            class="input-field w-full p-4 pl-11 rounded-xl text-white placeholder-gray-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <button id="searchBtn"
+                        class="btn-primary w-full h-full min-h-[56px] rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Search</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center px-2 mb-6 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <div class="relative">
+                        <input id="savePinCheck" type="checkbox" class="peer sr-only">
+                        <div
+                            class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-black after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white">
+                        </div>
+                    </div>
+                    <span class="text-gray-400 group-hover:text-gray-300 transition-colors">Remember Key</span>
+                </label>
+                <a href="/?buy=true" class="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+                    <i class="fas fa-shopping-cart"></i> Buy Key
+                </a>
+            </div>
+
+            <div id="resultContainer" class="space-y-6 min-h-[100px]">
+                <!-- Results will appear here -->
+                <div class="text-center py-12 text-gray-600">
+                    <i class="fas fa-search text-4xl mb-4 opacity-20"></i>
+                    <p>Enter details above to start searching</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-xs text-gray-600">
+            Developer: RAHUL SHARMA
+        </footer>
+    </div>
+
+    <script>
+        const SERVICE_TYPE = '{{ service_type }}';
+
+        const numberInput = document.getElementById('numberInput');
+        const pinInput = document.getElementById('pinInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const savePinCheck = document.getElementById('savePinCheck');
+        const globalNoteContainer = document.getElementById('globalNoteContainer');
+
+        const prefixContainer = document.getElementById('prefixContainer');
+        const inputIcon = document.getElementById('inputIcon');
+
+        // --- Input Masking & Formatting ---
+        if (SERVICE_TYPE === 'phone') {
+            numberInput.placeholder = 'Enter 10-digit number';
+            // Fix overlap: Use !important to force padding and adjust position
+            numberInput.style.setProperty('padding-left', '6rem', 'important');
+            prefixContainer.style.left = '2.8rem';
+            prefixContainer.style.zIndex = '10';
+            prefixContainer.textContent = '+91'; // Simplify to just +91
+
+            numberInput.addEventListener('input', (e) => {
+                // Remove non-digits
+                e.target.value = e.target.value.replace(/\D/g, '').substring(0, 10);
+            });
+        } else if (SERVICE_TYPE === 'vehicle') {
+            numberInput.placeholder = 'e.g. DL01AB1234';
+            numberInput.addEventListener('input', (e) => {
+                // Upper case and remove spaces/special chars
+                let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                e.target.value = val;
+            });
+        } else if (SERVICE_TYPE === 'aadhaar') {
+            numberInput.placeholder = 'XXXX-XXXX-XXXX';
+            numberInput.addEventListener('input', (e) => {
+                // Aadhaar formatting: 4-4-4
+                let val = e.target.value.replace(/\D/g, '').substring(0, 12);
+                let formatted = '';
+                for (let i = 0; i < val.length; i++) {
+                    if (i > 0 && i % 4 === 0) formatted += '-';
+                    formatted += val[i];
+                }
+                e.target.value = formatted;
+            });
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+        pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('osintDeviceId');
+            if (!deviceId) {
+                deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem('osintDeviceId', deviceId);
+            }
+            return deviceId;
+        }
+
+        async function fetchGlobalNote() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                if (config.note) {
+                    globalNoteContainer.innerHTML = `
+                        <div class="p-4 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm flex items-start gap-3">
+                            <i class="fas fa-info-circle mt-0.5 text-gray-400"></i>
+                            <span>${escapeHtml(config.note)}</span>
+                        </div>
+                    `;
+                    globalNoteContainer.classList.remove('hidden');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function performSearch() {
+            let number = numberInput.value.trim();
+            if (SERVICE_TYPE === 'phone') {
+                number = number.replace(/\s+/g, '').replace(/^\+91/, '');
+            }
+
+            const pin = pinInput.value.trim();
+            const deviceId = getDeviceId();
+
+            if (!number || !pin) {
+                displayError("Please enter both the search query and your API key.");
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: SERVICE_TYPE, number: number, pin, deviceId })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+
+                if (result.status === 'success' && savePinCheck.checked) {
+                    localStorage.setItem('osintApiKey', pin);
+                } else if (!savePinCheck.checked) {
+                    localStorage.removeItem('osintApiKey');
+                }
+
+                displayResults(result);
+            } catch (error) {
+                console.error("Search Error:", error);
+                displayError(error.message || "An unexpected error occurred.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function displayError(msg) {
+            resultContainer.innerHTML = `
+                <div class="p-6 bg-red-900/10 border border-red-900/20 rounded-2xl text-center">
+                    <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                    </div>
+                    <h3 class="text-red-300 font-bold mb-2">Search Failed</h3>
+                    <p class="text-red-400/80 text-sm">${escapeHtml(msg)}</p>
+                    <button onclick="location.reload()" class="mt-6 px-6 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-300 rounded-lg text-sm font-medium transition-colors">
+                        Try Again
+                    </button>
+                </div>
+            `;
+        }
+
+        function setLoading(loading) {
+            searchBtn.disabled = loading;
+            searchBtn.innerHTML = loading ? `<div class="loader"></div>` : `<span>Search</span><i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>`;
+        }
+
+        // --- NEW: Result Display Logic ---
+        function displayResults(data) {
+            resultContainer.innerHTML = '';
+
+            // Show Mock Warning
+            if (data.is_mock) {
+                resultContainer.innerHTML += `
+                    <div class="mb-6 p-4 bg-yellow-600/10 border border-yellow-600/20 rounded-xl text-center">
+                        <p class="text-yellow-400 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> DEMO MODE</p>
+                        <p class="text-yellow-400/70 text-sm">Database not configured. Showing mock results.</p>
+                    </div>
+                `;
+            }
+
+            // 1. Handle Protected Sources (Data Leak Fix)
+            if (data.protected_sources && data.protected_sources.length > 0) {
+                const protectedHtml = data.protected_sources.map(src => `
+                    <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-shield-alt text-gray-400"></i>
+                            <span class="text-gray-200 font-medium text-sm">${escapeHtml(src.source)}</span>
+                        </div>
+                        <span class="text-xs text-gray-500 italic">${escapeHtml(src.message)}</span>
+                    </div>
+                `).join('');
+
+                resultContainer.innerHTML += `
+                    <div class="mb-6">
+                        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i class="fas fa-lock text-xs"></i> Protected Content
+                        </h4>
+                        <div class="space-y-2">${protectedHtml}</div>
+                    </div>
+                `;
+            }
+
+            // 2. Handle Phone Search Results (New Array Structure)
+            if (SERVICE_TYPE === 'phone' && data.results && Array.isArray(data.results)) {
+                // Owner Info Card
+                if (data.owner) {
+                    resultContainer.innerHTML += `
+                        <div class="result-card mb-6 bg-white/5 border-white/10">
+                            <div class="p-6 text-center">
+                                <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 text-2xl text-white font-bold">
+                                    ${escapeHtml(data.owner.charAt(0))}
+                                </div>
+                                <h2 class="text-2xl font-bold text-white mb-1">${escapeHtml(data.owner)}</h2>
+                                <p class="text-gray-400 text-sm font-mono">${escapeHtml(data._meta?.search_term || '')}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Results List
+                data.results.forEach((item, index) => {
+                    let gridHtml = '';
+                    // Priority Order: Name, Mobile, Address, ID, Father, Email, etc.
+                    const fields = [
+                        { k: 'name', l: 'Name', i: 'user' },
+                        { k: 'mobile', l: 'Mobile', i: 'phone' },
+                        { k: 'address', l: 'Address', i: 'map-marker-alt' },
+                        { k: 'id_number', l: 'ID Number', i: 'id-card' },
+                        { k: 'father_name', l: "Father's Name", i: 'user-tie' },
+                        { k: 'email', l: 'Email', i: 'envelope' },
+                        { k: 'alt_mobile', l: 'Alt Mobile', i: 'phone-alt' },
+                        { k: 'circle', l: 'Circle', i: 'signal' }
+                    ];
+
+                    fields.forEach(f => {
+                        if (item[f.k]) {
+                            gridHtml += `
+                                <div class="result-item group">
+                                    <div class="result-label flex items-center gap-2">
+                                        <i class="fas fa-${f.i} text-gray-500 group-hover:text-gray-300 transition-colors"></i>
+                                        ${f.l}
+                                    </div>
+                                    <div class="result-value">${escapeHtml(item[f.k])}</div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    resultContainer.innerHTML += `
+                        <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
+                            <div class="result-header flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-300">Result #${index + 1}</span>
+                                <span class="text-xs text-gray-500 font-mono">ID: ${item.id || 'N/A'}</span>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${gridHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            // 3. Handle Vehicle Search Results (Specific Layout)
+            else if (SERVICE_TYPE === 'vehicle' && data.result) {
+                const vehicleData = data.result;
+                const meta = data._meta || {};
+
+                // Ownership Card
+                if (vehicleData['Ownership Details']) {
+                    const owner = vehicleData['Ownership Details'];
+                    resultContainer.innerHTML += `
+                         <div class="result-card mb-6 bg-white/5 border-white/10">
+                            <div class="p-6 text-center">
+                                <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 text-2xl text-white font-bold">
+                                    <i class="fas fa-car"></i>
+                                </div>
+                                <h2 class="text-xl font-bold text-white mb-1">${escapeHtml(owner['Owner Name'] || 'Unknown Owner')}</h2>
+                                <p class="text-gray-400 text-sm font-mono">${escapeHtml(owner['Registration Number'] || '')}</p>
+                                <div class="mt-4 flex flex-wrap justify-center gap-2">
+                                     <span class="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-300 border border-white/10">${escapeHtml(owner['Owner Serial No'] || 'N/A')}</span>
+                                     <span class="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-300 border border-white/10">${escapeHtml(owner['Registered RTO'] || 'N/A')}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Sections to display
+                const sections = ['Ownership Details', 'Vehicle Details', 'Insurance Information', 'Important Dates & Validity'];
+
+                sections.forEach(section => {
+                    if (vehicleData[section]) {
+                        let rows = '';
+                        for (const [k, v] of Object.entries(vehicleData[section])) {
+                            rows += `
+                                <div class="flex justify-between py-2 border-b border-white/5 last:border-0">
+                                    <span class="text-gray-400 text-sm">${k}</span>
+                                    <span class="text-gray-200 text-sm font-medium text-right">${escapeHtml(v)}</span>
+                                </div>
+                            `;
+                        }
+
+                        resultContainer.innerHTML += `
+                            <div class="result-card mb-4 animate-slide-up">
+                                <div class="result-header">
+                                    <h3 class="text-sm font-bold text-white uppercase tracking-wider">${section}</h3>
+                                </div>
+                                <div class="p-4 space-y-1">
+                                    ${rows}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                // Add "Get Phone" Button if eligible
+                if (meta.can_enrich) {
+                    resultContainer.innerHTML += `
+                        <div id="enrichContainer" class="mt-6 text-center animate-slide-up">
+                            <button onclick="fetchVehiclePhone('${meta.search_term}')" id="enrichBtn" 
+                                class="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 mx-auto">
+                                <i class="fas fa-mobile-alt"></i> 
+                                <span>Get Phone Number & Resale Value</span>
+                            </button>
+                            <div id="enrichResult" class="hidden mt-4 text-left"></div>
+                        </div>
+                    `;
+                }
+            }
+            // 5. Handle Family Search Results
+            else if (SERVICE_TYPE === 'family' && data.results && Array.isArray(data.results)) {
+                if (data.results.length === 0) {
+                    resultContainer.innerHTML += `<div class="text-center text-gray-400 italic">No family members found.</div>`;
+                } else {
+                    data.results.forEach((member, index) => {
+                        resultContainer.innerHTML += `
+                            <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
+                                <div class="result-header flex justify-between items-center">
+                                    <span class="text-sm font-bold text-gray-300">Member #${index + 1}</span>
+                                    <i class="fas fa-user-friends text-gray-500"></i>
+                                </div>
+                                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div class="result-item">
+                                        <div class="result-label"><i class="fas fa-user mr-2"></i>Name</div>
+                                        <div class="result-value">${escapeHtml(member.name || member.Name || 'N/A')}</div>
+                                    </div>
+                                    ${member.relation ? `
+                                    <div class="result-item">
+                                        <div class="result-label"><i class="fas fa-link mr-2"></i>Relation</div>
+                                        <div class="result-value">${escapeHtml(member.relation)}</div>
+                                    </div>` : ''}
+                                    ${member.dob || member.age ? `
+                                    <div class="result-item">
+                                        <div class="result-label"><i class="fas fa-birthday-cake mr-2"></i>Age/DOB</div>
+                                        <div class="result-value">${escapeHtml(member.dob || member.age)}</div>
+                                    </div>` : ''}
+                                    ${member.mobile ? `
+                                    <div class="result-item">
+                                        <div class="result-label"><i class="fas fa-phone mr-2"></i>Mobile</div>
+                                        <div class="result-value">${escapeHtml(member.mobile)}</div>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            }
+            // 6. Handle GST Search Results
+            else if (SERVICE_TYPE === 'gst') {
+                const gstData = data.data || data; // Handle wrapper if exists
+
+                resultContainer.innerHTML += `
+                    <div class="result-card mb-6 bg-white/5 border-white/10">
+                        <div class="p-6">
+                            <div class="flex items-center gap-4 mb-6">
+                                <div class="w-16 h-16 rounded-xl bg-orange-500/10 flex items-center justify-center text-2xl text-orange-500 font-bold">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-white">${escapeHtml(gstData.trade_name || gstData.legal_name || 'Business Name')}</h2>
+                                    <p class="text-gray-400 text-sm font-mono mt-1">${escapeHtml(gstData.gstin || 'GSTIN Not Available')}</p>
+                                    <span class="inline-block mt-2 px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+                                        ${escapeHtml(gstData.status || 'Active')}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="result-item">
+                                    <div class="result-label">Legal Name</div>
+                                    <div class="result-value">${escapeHtml(gstData.legal_name || 'N/A')}</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-label">Taxpayer Type</div>
+                                    <div class="result-value">${escapeHtml(gstData.taxpayer_type || 'N/A')}</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-label">Registration Date</div>
+                                    <div class="result-value">${escapeHtml(gstData.date_of_registration || 'N/A')}</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-label">State / Center</div>
+                                    <div class="result-value">${escapeHtml(gstData.state_jurisdiction || 'N/A')} / ${escapeHtml(gstData.center_jurisdiction || 'N/A')}</div>
+                                </div>
+                            </div>
+                            
+                            ${gstData.address ? `
+                            <div class="mt-4 pt-4 border-t border-white/10">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Registered Address</h4>
+                                <p class="text-gray-300 text-sm leading-relaxed">${escapeHtml(gstData.address)}</p>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            // 7. Handle Other Services (Generic Pretty Print)
+            else if (SERVICE_TYPE === 'aadhaar' && data.results && Array.isArray(data.results)) {
+                data.results.forEach((item, index) => {
+                    let gridHtml = '';
+                    // Standard fields mapping
+                    const fields = [
+                        { k: 'name', l: 'Name', i: 'user' },
+                        { k: 'care_of', l: 'Care Of', i: 'user-friends' },
+                        { k: 'address', l: 'Address', i: 'map-marker-alt' },
+                        { k: 'dob', l: 'DOB', i: 'birthday-cake' },
+                        { k: 'gender', l: 'Gender', i: 'venus-mars' },
+                        { k: 'aadhaar_number', l: 'Aadhaar No', i: 'id-card' },
+                        { k: 'mobile', l: 'Mobile Linked', i: 'mobile-alt' },
+                        { k: 'email', l: 'Email', i: 'envelope' }
+                    ];
+
+                    fields.forEach(f => {
+                        // Check for both key styles just in case
+                        const val = item[f.k] || item[f.key];
+                        if (val) {
+                            gridHtml += `
+                                <div class="result-item group">
+                                    <div class="result-label flex items-center gap-2">
+                                        <i class="fas fa-${f.i} text-gray-500 group-hover:text-gray-300 transition-colors"></i>
+                                        ${f.l}
+                                    </div>
+                                    <div class="result-value">${escapeHtml(val)}</div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    // Fallback for dynamic fields
+                    Object.keys(item).forEach(key => {
+                        if (['branding', 'status', 'source', 'id'].includes(key)) return;
+                        if (fields.some(f => f.k === key || f.key === key)) return;
+
+                        gridHtml += `
+                             <div class="result-item group">
+                                <div class="result-label flex items-center gap-2">
+                                    <i class="fas fa-info-circle text-gray-500 group-hover:text-gray-300 transition-colors"></i>
+                                    ${key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </div>
+                                <div class="result-value">${escapeHtml(item[key])}</div>
+                            </div>
+                        `;
+                    });
+
+                    resultContainer.innerHTML += `
+                        <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
+                            <div class="result-header flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-300">Aadhaar Result #${index + 1}</span>
+                                <span class="text-xs text-gray-500 font-mono"><i class="fas fa-fingerprint mr-1"></i>Verified</span>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${gridHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            // 8. Handle Other Services (Generic Pretty Print)
+            else {
+                const renderValue = (val) => {
+                    if (val === null || val === undefined) return '<span class="text-gray-600 italic">N/A</span>';
+                    if (typeof val === 'boolean') return val ? '<span class="text-green-400 font-bold">Yes</span>' : '<span class="text-red-400 font-bold">No</span>';
+                    if (typeof val === 'object') return renderObject(val); // Recursion
+
+                    // Strip HTML tags and return clean text
+                    const str = String(val).replace(/<[^>]*>/g, '');
+                    return escapeHtml(str);
+                };
+
+                const renderObject = (obj) => {
+                    if (Array.isArray(obj)) {
+                        if (obj.length === 0) return '<span class="text-gray-500 italic">Empty List</span>';
+                        return `<div class="space-y-2">${obj.map(item => `<div class="pl-4 border-l-2 border-gray-700">${renderValue(item)}</div>`).join('')}</div>`;
+                    }
+
+                    let html = '<div class="grid grid-cols-1 gap-2">';
+                    for (const [key, value] of Object.entries(obj)) {
+                        if (['status', 'key_status', 'dev', 'is_mock'].includes(key)) continue;
+
+                        // Check if value is a complex object/array to decide layout
+                        const isComplex = typeof value === 'object' && value !== null;
+
+                        html += `
+                            <div class="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${key.replace(/_/g, ' ')}</div>
+                                <div class="text-gray-200 ${isComplex ? 'mt-2' : 'font-mono text-sm break-all'}">
+                                    ${renderValue(value)}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    return html;
+                };
+
+                // Root level handling
+                const keys = Object.keys(data).filter(k => !['status', 'key_status', 'dev', 'is_mock', '_meta', 'result'].includes(k));
+
+                // Support for single 'result' object too
+                if (data.result && !keys.length) {
+                    resultContainer.innerHTML += `<div class="mb-4">${renderObject(data.result)}</div>`;
+                } else if (keys.length === 0) {
+                    // check result inside data
+                    if (!data.result)
+                        resultContainer.innerHTML += `<div class="text-center text-gray-500 italic">No data found in response.</div>`;
+                } else {
+                    keys.forEach(key => {
+                        const value = data[key];
+                        resultContainer.innerHTML += `
+                            <div class="result-card mb-6 animate-slide-up">
+                                <div class="result-header flex items-center gap-2">
+                                    <i class="fas fa-database text-gray-400"></i>
+                                    <span class="text-sm font-bold text-gray-300 uppercase">${key.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div class="p-4">
+                                    ${renderValue(value)}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+
+
+            // Key Status Footer
+            if (data.key_status) {
+                resultContainer.innerHTML += `
+                    <div class="mt-8 flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-sm">
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <i class="fas fa-search"></i>
+                            <span>Searches Left: <span class="text-white font-bold">${data.key_status.searches_left}</span></span>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <i class="fas fa-clock"></i>
+                            <span>Expires: <span class="text-white font-bold">${data.key_status.expiry_date}</span></span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function loadSavedPin() {
+            const savedPin = localStorage.getItem('osintApiKey');
+            if (savedPin) { pinInput.value = savedPin; savePinCheck.checked = true; }
+        }
+
+        loadSavedPin();
+        fetchGlobalNote();
+    </script>
+</body>
+
+</html>
