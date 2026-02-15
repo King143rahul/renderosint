@@ -957,6 +957,13 @@ def admin_plans():
         
     if request.method == 'DELETE':
         plan_id = request.args.get('id')
+        if not plan_id:
+            data = request.json or {}
+            plan_id = data.get('id')
+        
+        if not plan_id:
+            return jsonify({"success": False, "error": "Plan ID required"}), 400
+            
         PLANS_COLLECTION.delete_one({"_id": ObjectId(plan_id)})
         return jsonify({"success": True})
 

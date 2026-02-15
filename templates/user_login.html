@@ -110,7 +110,8 @@
                 class="absolute top-0 left-[-100%] w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 group-hover:left-[100%] transition-all duration-1000 ease-in-out">
             </div>
 
-            <form method="POST" action="/login" class="space-y-6 relative z-10">
+            <form method="POST" action="/login" class="space-y-6 relative z-10"
+                onsubmit="document.querySelector('button[type=submit]').innerHTML = '<i class=\'fas fa-spinner fa-spin\'></i> Authenticating...';">
                 <div class="space-y-2">
                     <label for="name" class="text-sm font-medium text-gray-300 ml-1">Full Name</label>
                     <div class="relative">

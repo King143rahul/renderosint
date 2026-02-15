@@ -7,7 +7,7 @@
     <title>Admin Panel - OSINT by KNOX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
+    <style type="text/tailwindcss">
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 
         body {
@@ -85,6 +85,21 @@
 
         .btn-secondary {
             @apply px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-white border border-white/10 transition-all;
+        }
+
+        /* Cyberpunk Animations */
+        @keyframes spin-reverse {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(-360deg);
+            }
+        }
+
+        .animate-spin-reverse {
+            animation: spin-reverse 1.5s linear infinite;
         }
     </style>
 </head>
@@ -658,6 +673,23 @@
         let allKeysData = [];
         let currentModalMode = 'add';
 
+        // --- Cyberpunk Loading Helpers ---
+        const loadingSpinner = `
+        <div class="flex flex-col items-center justify-center py-8">
+            <div class="relative w-16 h-16 mb-4">
+                <div class="absolute inset-0 border-4 border-t-blue-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
+                <div class="absolute inset-2 border-4 border-t-transparent border-r-blue-400 border-b-transparent border-l-purple-400 rounded-full animate-spin-reverse"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-fingerprint text-2xl text-white/80 animate-pulse"></i>
+                </div>
+            </div>
+            <div class="text-blue-400 font-mono text-xs animate-pulse tracking-widest">ACCESSING DATA...</div>
+        </div>`;
+
+        function getLoadingRow(cols) {
+            return `<tr><td colspan="${cols}" class="p-4">${loadingSpinner}</td></tr>`;
+        }
+
         // Views
         const loginView = document.getElementById('login-view');
         const dashboardView = document.getElementById('dashboard-view');
@@ -847,6 +879,7 @@
         }
 
         async function loadKeys() {
+            keysTableBody.innerHTML = getLoadingRow(6);
             const result = await apiRequest('/admin/keys');
             if (result.success) {
                 allKeysData = result.keys || [];
@@ -857,6 +890,7 @@
         }
 
         async function loadUsers(searchQuery = '') {
+            usersTableBody.innerHTML = getLoadingRow(5);
             const result = await apiRequest(`/admin/users?search=${encodeURIComponent(searchQuery)}`);
             if (result.success) renderUsers(result.users || []);
             else alert('Failed to load users: ' + (result.error || 'Unknown error'));
@@ -869,8 +903,9 @@
 
         // --- Requests Management ---
         async function loadRequests() {
-            const requests = await apiRequest('/admin/requests');
             const tbody = document.getElementById('requests-table-body');
+            tbody.innerHTML = getLoadingRow(6);
+            const requests = await apiRequest('/admin/requests');
             tbody.innerHTML = '';
 
             if (!requests || requests.length === 0) {
@@ -925,8 +960,9 @@
         let editingPlanId = null;
 
         async function loadPlans() {
-            const plans = await apiRequest('/admin/plans');
             const tbody = document.getElementById('plans-table-body');
+            tbody.innerHTML = getLoadingRow(5);
+            const plans = await apiRequest('/admin/plans');
             tbody.innerHTML = '';
 
             plans.forEach(plan => {
@@ -1324,7 +1360,7 @@
         // --- History Modal Logic ---
         async function showHistory(pin) {
             historyModalTitle.textContent = `Search History for: ${pin}`;
-            historyModalBody.innerHTML = '<p>Loading...</p>';
+            historyModalBody.innerHTML = loadingSpinner;
             historyModal.classList.remove('hidden');
 
             const result = await apiRequest(`/admin/history?pin=${pin}`);
