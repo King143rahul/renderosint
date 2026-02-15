@@ -16,7 +16,12 @@ from bson import ObjectId
 # --- Initialization ---
 load_dotenv()
 app = Flask(__name__, static_folder="static", template_folder="templates")
-app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
+app.secret_key = os.getenv("SECRET_KEY", "fallback-dev-key-change-in-prod")
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=7)
+app.config['SESSION_COOKIE_SECURE'] = True # Force secure cookies (requires HTTPS)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # --- Security headers ---
 @app.after_request
