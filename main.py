@@ -327,25 +327,30 @@ def fetch_aadhaar_info(number):
         # Robust Parsing
         results = []
         
-        # Case 1: Standard {"results": [...]}
-        if isinstance(data, dict) and data.get('results'):
+        # Case 1: Nested {"results": {"records": [...]}} (User provided structure)
+        if isinstance(data, dict) and isinstance(data.get('results'), dict) and data['results'].get('records'):
+             results = data['results']['records']
+        # Case 2: Standard {"results": [...]}
+        elif isinstance(data, dict) and isinstance(data.get('results'), list):
              results = data['results']
-        # Case 2: Direct list [...]
+        # Case 3: Direct list [...]
         elif isinstance(data, list):
              results = data
-        # Case 3: Wrapped data {"data": ...}
+        # Case 4: Wrapped data {"data": ...}
         elif isinstance(data, dict) and data.get('data'):
              if isinstance(data['data'], list): results = data['data']
              else: results = [data['data']]
-        # Case 4: Single Object (if not error)
+        # Case 5: Single Object (if not error)
         elif isinstance(data, dict) and not data.get('error') and data.get('status') != False:
-             results = [data]
+             # Check if it has 'mobile' or 'aadhaar_number' to be sure it's a record
+             if data.get('mobile') or data.get('aadhaar_number'):
+                results = [data]
         
         normalized = []
         for item in results:
              if not isinstance(item, dict): continue
              # Remove raw/branding fields if any
-             clean_item = {k: v for k, v in item.items() if k not in ['status', 'branding', 'source', 'error', 'success']}
+             clean_item = {k: v for k, v in item.items() if k not in ['status', 'branding', 'source', 'error', 'success', '_source']}
              if clean_item: # Only add if not empty
                 normalized.append(clean_item)
              
