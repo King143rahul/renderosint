@@ -426,15 +426,14 @@
         `;
         document.head.appendChild(style);
 
-        // --- Optimized Display Results ---
+        // --- Optimized Display Results with Chunking ---
         function displayResults(data) {
             resultContainer.innerHTML = '';
-            let htmlBuffer = '';
 
             // Show Mock Warning
             if (data.is_mock) {
-                htmlBuffer += `
-                    <div class="mb-6 p-4 bg-yellow-600/10 border border-yellow-600/20 rounded-xl text-center">
+                resultContainer.innerHTML += `
+                    <div class="mb-6 p-4 bg-yellow-600/10 border border-yellow-600/20 rounded-xl text-center animate-slide-up">
                         <p class="text-yellow-400 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> DEMO MODE</p>
                         <p class="text-yellow-400/70 text-sm">Database not configured. Showing mock results.</p>
                     </div>
@@ -453,8 +452,8 @@
                     </div>
                 `).join('');
 
-                htmlBuffer += `
-                    <div class="mb-6">
+                resultContainer.innerHTML += `
+                    <div class="mb-6 animate-slide-up">
                         <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <i class="fas fa-lock text-xs"></i> Protected Content
                         </h4>
@@ -463,11 +462,14 @@
                 `;
             }
 
+            // Render Queue System
+            const renderQueue = [];
+
             // 2. Handle Phone Search Results
             if (SERVICE_TYPE === 'phone' && data.results && Array.isArray(data.results)) {
                 if (data.owner) {
-                    htmlBuffer += `
-                        <div class="result-card mb-6 bg-white/5 border-white/10">
+                    resultContainer.innerHTML += `
+                        <div class="result-card mb-6 bg-white/5 border-white/10 animate-slide-up">
                             <div class="p-6 text-center">
                                 <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 text-2xl text-white font-bold">
                                     ${escapeHtml(data.owner.charAt(0))}
@@ -479,36 +481,37 @@
                     `;
                 }
 
-                // Batch render results to avoid DOM thrashing
                 data.results.forEach((item, index) => {
-                    let gridHtml = '';
-                    const fields = [
-                        { k: 'name', l: 'Name', i: 'user' },
-                        { k: 'mobile', l: 'Mobile', i: 'phone' },
-                        { k: 'address', l: 'Address', i: 'map-marker-alt' },
-                        { k: 'id_number', l: 'ID Number', i: 'id-card' },
-                        { k: 'father_name', l: "Father's Name", i: 'user-tie' },
-                        { k: 'email', l: 'Email', i: 'envelope' },
-                        { k: 'alt_mobile', l: 'Alt Mobile', i: 'phone-alt' },
-                        { k: 'circle', l: 'Circle', i: 'signal' }
-                    ];
+                    renderQueue.push(() => {
+                        let gridHtml = '';
+                        const fields = [
+                            { k: 'name', l: 'Name', i: 'user' },
+                            { k: 'mobile', l: 'Mobile', i: 'phone' },
+                            { k: 'address', l: 'Address', i: 'map-marker-alt' },
+                            { k: 'id_number', l: 'ID Number', i: 'id-card' },
+                            { k: 'father_name', l: "Father's Name", i: 'user-tie' },
+                            { k: 'email', l: 'Email', i: 'envelope' },
+                            { k: 'alt_mobile', l: 'Alt Mobile', i: 'phone-alt' },
+                            { k: 'circle', l: 'Circle', i: 'signal' }
+                        ];
 
-                    fields.forEach(f => {
-                        if (item[f.k]) {
-                            gridHtml += `
-                                <div class="result-item group">
-                                    <div class="result-label flex items-center gap-2">
-                                        <i class="fas fa-${f.i} text-gray-500 group-hover:text-gray-300 transition-colors"></i>
-                                        ${f.l}
+                        fields.forEach(f => {
+                            if (item[f.k]) {
+                                gridHtml += `
+                                    <div class="result-item group">
+                                        <div class="result-label flex items-center gap-2">
+                                            <i class="fas fa-${f.i} text-gray-500 group-hover:text-gray-300 transition-colors"></i>
+                                            ${f.l}
+                                        </div>
+                                        <div class="result-value">${escapeHtml(item[f.k])}</div>
                                     </div>
-                                    <div class="result-value">${escapeHtml(item[f.k])}</div>
-                                </div>
-                            `;
-                        }
-                    });
+                                `;
+                            }
+                        });
 
-                    htmlBuffer += `
-                        <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 50}ms">
+                        const card = document.createElement('div');
+                        card.className = 'result-card mb-4 animate-slide-up';
+                        card.innerHTML = `
                             <div class="result-header flex justify-between items-center">
                                 <span class="text-sm font-bold text-gray-300">Result #${index + 1}</span>
                                 <span class="text-xs text-gray-500 font-mono">ID: ${item.id || 'N/A'}</span>
@@ -516,8 +519,9 @@
                             <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                                 ${gridHtml}
                             </div>
-                        </div>
-                    `;
+                        `;
+                        resultContainer.appendChild(card);
+                    });
                 });
             }
             // 3. Handle Vehicle Search Results
@@ -527,8 +531,8 @@
 
                 if (vehicleData['Ownership Details']) {
                     const owner = vehicleData['Ownership Details'];
-                    htmlBuffer += `
-                         <div class="result-card mb-6 bg-white/5 border-white/10">
+                    resultContainer.innerHTML += `
+                         <div class="result-card mb-6 bg-white/5 border-white/10 animate-slide-up">
                             <div class="p-6 text-center">
                                 <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 text-2xl text-white font-bold">
                                     <i class="fas fa-car"></i>
@@ -547,49 +551,58 @@
                 const sections = ['Ownership Details', 'Vehicle Details', 'Insurance Information', 'Important Dates & Validity'];
                 sections.forEach(section => {
                     if (vehicleData[section]) {
-                        let rows = '';
-                        for (const [k, v] of Object.entries(vehicleData[section])) {
-                            rows += `
-                                <div class="flex justify-between py-2 border-b border-white/5 last:border-0">
-                                    <span class="text-gray-400 text-sm">${k}</span>
-                                    <span class="text-gray-200 text-sm font-medium text-right">${escapeHtml(v)}</span>
-                                </div>
-                            `;
-                        }
-                        htmlBuffer += `
-                            <div class="result-card mb-4 animate-slide-up">
+                        renderQueue.push(() => {
+                            let rows = '';
+                            for (const [k, v] of Object.entries(vehicleData[section])) {
+                                rows += `
+                                    <div class="flex justify-between py-2 border-b border-white/5 last:border-0">
+                                        <span class="text-gray-400 text-sm">${k}</span>
+                                        <span class="text-gray-200 text-sm font-medium text-right">${escapeHtml(v)}</span>
+                                    </div>
+                                `;
+                            }
+                            const card = document.createElement('div');
+                            card.className = 'result-card mb-4 animate-slide-up';
+                            card.innerHTML = `
                                 <div class="result-header">
                                     <h3 class="text-sm font-bold text-white uppercase tracking-wider">${section}</h3>
                                 </div>
                                 <div class="p-4 space-y-1">
                                     ${rows}
                                 </div>
-                            </div>
-                        `;
+                            `;
+                            resultContainer.appendChild(card);
+                        });
                     }
                 });
 
                 if (meta.can_enrich) {
-                    htmlBuffer += `
-                        <div id="enrichContainer" class="mt-6 text-center animate-slide-up">
+                    renderQueue.push(() => {
+                        const div = document.createElement('div');
+                        div.id = 'enrichContainer';
+                        div.className = 'mt-6 text-center animate-slide-up';
+                        div.innerHTML = `
                             <button onclick="fetchVehiclePhone('${meta.search_term}')" id="enrichBtn" 
                                 class="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 mx-auto">
                                 <i class="fas fa-mobile-alt"></i> 
                                 <span>Get Phone Number & Resale Value</span>
                             </button>
                             <div id="enrichResult" class="hidden mt-4 text-left"></div>
-                        </div>
-                    `;
+                        `;
+                        resultContainer.appendChild(div);
+                    });
                 }
             }
             // 5. Handle Family Search Results
             else if (SERVICE_TYPE === 'family' && data.results && Array.isArray(data.results)) {
                 if (data.results.length === 0) {
-                    htmlBuffer += `<div class="text-center text-gray-400 italic">No family members found.</div>`;
+                    resultContainer.innerHTML += `<div class="text-center text-gray-400 italic animate-slide-up">No family members found.</div>`;
                 } else {
                     data.results.forEach((member, index) => {
-                        htmlBuffer += `
-                            <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
+                        renderQueue.push(() => {
+                            const card = document.createElement('div');
+                            card.className = 'result-card mb-4 animate-slide-up';
+                            card.innerHTML = `
                                 <div class="result-header flex justify-between items-center">
                                     <span class="text-sm font-bold text-gray-300">Member #${index + 1}</span>
                                     <i class="fas fa-user-friends text-gray-500"></i>
@@ -615,128 +628,29 @@
                                         <div class="result-value">${escapeHtml(member.mobile)}</div>
                                     </div>` : ''}
                                 </div>
-                            </div>
-                        `;
+                            `;
+                            resultContainer.appendChild(card);
+                        });
                     });
                 }
             }
-            // 6. Handle GST Search Results
-            else if (SERVICE_TYPE === 'gst') {
-                const gstData = data.data || data;
-                htmlBuffer += `
-                    <div class="result-card mb-6 bg-white/5 border-white/10">
-                        <div class="p-6">
-                            <div class="flex items-center gap-4 mb-6">
-                                <div class="w-16 h-16 rounded-xl bg-orange-500/10 flex items-center justify-center text-2xl text-orange-500 font-bold">
-                                    <i class="fas fa-building"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-xl font-bold text-white">${escapeHtml(gstData.trade_name || gstData.legal_name || 'Business Name')}</h2>
-                                    <p class="text-gray-400 text-sm font-mono mt-1">${escapeHtml(gstData.gstin || 'GSTIN Not Available')}</p>
-                                    <span class="inline-block mt-2 px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
-                                        ${escapeHtml(gstData.status || 'Active')}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="result-item">
-                                    <div class="result-label">Legal Name</div>
-                                    <div class="result-value">${escapeHtml(gstData.legal_name || 'N/A')}</div>
-                                </div>
-                                <div class="result-item">
-                                    <div class="result-label">Taxpayer Type</div>
-                                    <div class="result-value">${escapeHtml(gstData.taxpayer_type || 'N/A')}</div>
-                                </div>
-                                <div class="result-item">
-                                    <div class="result-label">Registration Date</div>
-                                    <div class="result-value">${escapeHtml(gstData.date_of_registration || 'N/A')}</div>
-                                </div>
-                                <div class="result-item">
-                                    <div class="result-label">State / Center</div>
-                                    <div class="result-value">${escapeHtml(gstData.state_jurisdiction || 'N/A')} / ${escapeHtml(gstData.center_jurisdiction || 'N/A')}</div>
-                                </div>
-                            </div>
-                            ${gstData.address ? `
-                            <div class="mt-4 pt-4 border-t border-white/10">
-                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Registered Address</h4>
-                                <p class="text-gray-300 text-sm leading-relaxed">${escapeHtml(gstData.address)}</p>
-                            </div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }
-            // 7. Handle Aadhaar & Generic
-            else if (SERVICE_TYPE === 'aadhaar' && data.results && Array.isArray(data.results)) {
-                data.results.forEach((item, index) => {
-                    let gridHtml = '';
-                    const fields = [
-                        { k: 'name', l: 'Name', i: 'user' },
-                        { k: 'care_of', l: 'Care Of', i: 'user-friends' },
-                        { k: 'address', l: 'Address', i: 'map-marker-alt' },
-                        { k: 'dob', l: 'DOB', i: 'birthday-cake' },
-                        { k: 'gender', l: 'Gender', i: 'venus-mars' },
-                        { k: 'aadhaar_number', l: 'Aadhaar No', i: 'id-card' },
-                        { k: 'mobile', l: 'Mobile Linked', i: 'mobile-alt' },
-                        { k: 'email', l: 'Email', i: 'envelope' }
-                    ];
-
-                    fields.forEach(f => {
-                        const val = item[f.k] || item[f.key];
-                        if (val) {
-                            gridHtml += `
-                                <div class="result-item group">
-                                    <div class="result-label flex items-center gap-2">
-                                        <i class="fas fa-${f.i} text-gray-500 group-hover:text-gray-300 transition-colors"></i>
-                                        ${f.l}
-                                    </div>
-                                    <div class="result-value">${escapeHtml(val)}</div>
-                                </div>
-                            `;
-                        }
-                    });
-
-                    Object.keys(item).forEach(key => {
-                        if (['branding', 'status', 'source', 'id'].includes(key)) return;
-                        if (fields.some(f => f.k === key || f.key === key)) return;
-                        gridHtml += `
-                             <div class="result-item group">
-                                <div class="result-label flex items-center gap-2">
-                                    <i class="fas fa-info-circle text-gray-500 group-hover:text-gray-300 transition-colors"></i>
-                                    ${key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                </div>
-                                <div class="result-value">${escapeHtml(item[key])}</div>
-                            </div>
-                        `;
-                    });
-
-                    htmlBuffer += `
-                        <div class="result-card mb-4 animate-slide-up" style="animation-delay: ${index * 100}ms">
-                            <div class="result-header flex justify-between items-center">
-                                <span class="text-sm font-bold text-gray-300">Aadhaar Result #${index + 1}</span>
-                                <span class="text-xs text-gray-500 font-mono"><i class="fas fa-fingerprint mr-1"></i>Verified</span>
-                            </div>
-                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                ${gridHtml}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
+            // 7. Generic Fallback
             else {
-                // Generic Pretty Print
-                const renderValue = (val) => {
+                // Generic Pretty Print Helper
+                const renderValue = (val, depth = 0) => {
+                    if (depth > 5) return '<span class="text-gray-500">...</span>';
                     if (val === null || val === undefined) return '<span class="text-gray-600 italic">N/A</span>';
                     if (typeof val === 'boolean') return val ? '<span class="text-green-400 font-bold">Yes</span>' : '<span class="text-red-400 font-bold">No</span>';
-                    if (typeof val === 'object') return renderObject(val);
+                    if (typeof val === 'object') return renderObject(val, depth + 1);
 
                     const str = String(val).replace(/<[^>]*>/g, '');
                     return escapeHtml(str);
                 };
 
-                const renderObject = (obj) => {
+                const renderObject = (obj, depth = 0) => {
                     if (Array.isArray(obj)) {
                         if (obj.length === 0) return '<span class="text-gray-500 italic">Empty List</span>';
-                        return `<div class="space-y-2">${obj.map(item => `<div class="pl-4 border-l-2 border-gray-700">${renderValue(item)}</div>`).join('')}</div>`;
+                        return `<div class="space-y-2">${obj.map(item => `<div class="pl-4 border-l-2 border-gray-700">${renderValue(item, depth)}</div>`).join('')}</div>`;
                     }
 
                     let html = '<div class="grid grid-cols-1 gap-2">';
@@ -747,7 +661,7 @@
                             <div class="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
                                 <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${key.replace(/_/g, ' ')}</div>
                                 <div class="text-gray-200 ${isComplex ? 'mt-2' : 'font-mono text-sm break-all'}">
-                                    ${renderValue(value)}
+                                    ${renderValue(value, depth)}
                                 </div>
                             </div>
                         `;
@@ -758,15 +672,15 @@
 
                 const keys = Object.keys(data).filter(k => !['status', 'key_status', 'dev', 'is_mock', '_meta', 'result', 'protected_sources'].includes(k));
 
-                if (data.result && !keys.length) {
-                    htmlBuffer += `<div class="mb-4">${renderObject(data.result)}</div>`;
-                } else if (keys.length === 0) {
-                    if (!data.result) htmlBuffer += `<div class="text-center text-gray-500 italic">No data found in response.</div>`;
+                if (keys.length === 0 && !data.result) {
+                    resultContainer.innerHTML += `<div class="text-center text-gray-500 italic animate-slide-up">No specific data found.</div>`;
                 } else {
                     keys.forEach(key => {
-                        const value = data[key];
-                        htmlBuffer += `
-                            <div class="result-card mb-6 animate-slide-up">
+                        renderQueue.push(() => {
+                            const value = data[key];
+                            const card = document.createElement('div');
+                            card.className = 'result-card mb-6 animate-slide-up';
+                            card.innerHTML = `
                                 <div class="result-header flex items-center gap-2">
                                     <i class="fas fa-database text-gray-400"></i>
                                     <span class="text-sm font-bold text-gray-300 uppercase">${key.replace(/_/g, ' ')}</span>
@@ -774,31 +688,48 @@
                                 <div class="p-4">
                                     ${renderValue(value)}
                                 </div>
-                            </div>
-                        `;
+                            `;
+                            resultContainer.appendChild(card);
+                        });
                     });
                 }
             }
 
-            // Key Status Footer
-            if (data.key_status) {
-                htmlBuffer += `
-                    <div class="mt-8 flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-sm">
-                        <div class="flex items-center gap-2 text-gray-400">
-                            <i class="fas fa-search"></i>
-                            <span>Searches Left: <span class="text-white font-bold">${data.key_status.searches_left}</span></span>
-                        </div>
-                        <div class="flex items-center gap-2 text-gray-400">
-                            <i class="fas fa-clock"></i>
-                            <span>Expires: <span class="text-white font-bold">${data.key_status.expiry_date}</span></span>
-                        </div>
-                    </div>
-                `;
-            }
+            // Execute Queue (Chunked)
+            const processQueue = () => {
+                if (renderQueue.length === 0) {
+                    // Finally, add Footer if compatible
+                    if (data.key_status) {
+                        const footer = document.createElement('div');
+                        footer.className = 'mt-8 flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-sm animate-slide-up';
+                        footer.innerHTML = `
+                             <div class="flex items-center gap-2 text-gray-400">
+                                <i class="fas fa-search"></i>
+                                <span>Searches Left: <span class="text-white font-bold">${data.key_status.searches_left}</span></span>
+                            </div>
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <i class="fas fa-clock"></i>
+                                <span>Expires: <span class="text-white font-bold">${data.key_status.expiry_date}</span></span>
+                            </div>
+                        `;
+                        resultContainer.appendChild(footer);
+                    }
+                    return;
+                }
 
-            // Finally Commit the HTML to DOM
-            resultContainer.innerHTML = htmlBuffer;
+                // Process 3 items per frame to keep UI smooth
+                const chunkSize = 3;
+                for (let i = 0; i < chunkSize && renderQueue.length > 0; i++) {
+                    const task = renderQueue.shift();
+                    task();
+                }
+
+                requestAnimationFrame(processQueue);
+            };
+
+            processQueue();
         }
+
 
         function setLoading(loading) {
             searchBtn.disabled = loading;
@@ -837,26 +768,27 @@
                 if (data.success && data.data) {
                     const info = data.data;
                     let detailsHtml = '';
-                    // Check common fields (case insensitive logic or check both)
-                    const mobile = info.mobile || info.Mobile || info.contact || info.Contact;
-                    const owner = info.Owner || info.owner || info.Name || info.name;
-                    const model = info.MakerModel || info.model || info.VehicleType;
 
-                    if (mobile) detailsHtml += `<p class="text-gray-300">Registered Mobile: <span class="font-mono text-white">${mobile}</span></p>`;
-                    if (owner) detailsHtml += `<p class="text-gray-300">Owner: <span class="font-mono text-white">${owner}</span></p>`;
-                    if (model) detailsHtml += `<p class="text-gray-300">Model: <span class="font-mono text-white">${model}</span></p>`;
+                    // Targeted Fields
+                    const mobile = info.mobile || info.Mobile || info.contact || info.Contact || info.registered_mobile || "Not Available";
+                    const resale = info.resale_value || info.ResaleValue || info.price || "Check Market Value";
 
-                    // Fallback if structured data isn't obvious
-                    if (!detailsHtml) {
-                        detailsHtml = `<pre class="text-xs text-gray-400 overflow-x-auto">${JSON.stringify(info, null, 2)}</pre>`;
-                    }
+                    detailsHtml += `
+                            <div class="grid grid-cols-1 gap-2">
+                                <p class="text-gray-300">Registered Mobile: <span class="font-mono text-white text-lg font-bold">${mobile}</span></p>
+                                <p class="text-gray-300">Resale Value: <span class="font-mono text-green-400 font-bold">${resale}</span></p>
+                            </div>
+                        `;
 
                     enrichResult.innerHTML = `
-                        <div class="p-4 bg-green-900/20 border border-green-500/30 rounded-lg text-sm">
-                            <p class="text-green-400 font-bold mb-2"><i class="fas fa-check-circle mr-2"></i> Details Found</p>
-                            ${detailsHtml}
-                        </div>
-                    `;
+                            <div class="p-4 bg-green-900/20 border border-green-500/30 rounded-lg text-sm">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i class="fas fa-check-circle text-green-400 text-lg"></i>
+                                    <span class="text-green-400 font-bold uppercase tracking-wider">Premium Details Found</span>
+                                </div>
+                                ${detailsHtml}
+                            </div>
+                        `;
                     enrichResult.classList.remove('hidden');
                 } else {
                     throw new Error(data.error || "No details found");

@@ -78,29 +78,96 @@
             animation: spin-reverse 1.5s linear infinite;
         }
     </style>
-    <style type="text/tailwindcss">
+    <style>
         .tab-btn {
-            @apply px-4 py-2 font-medium text-gray-500 border-b-2 border-transparent hover:text-white hover:border-gray-700 transition-all duration-300;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            color: #6b7280;
+            /* text-gray-500 */
+            border-bottom-width: 2px;
+            border-color: transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            border-color: #374151;
+            /* border-gray-700 */
         }
 
         .tab-btn.active {
-            @apply text-white border-white;
+            color: #ffffff;
+            border-color: #ffffff;
         }
 
         .stat-card {
-            @apply glass-card rounded-xl p-6 hover:bg-white/5 transition-all duration-300;
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            padding: 1.5rem;
+            /* p-6 */
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .input-dark {
-            @apply w-full p-3 bg-black/50 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 text-white placeholder-gray-600 transition-all;
+            width: 100%;
+            padding: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .input-dark:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+        }
+
+        .input-dark::placeholder {
+            color: #4b5563;
+            /* text-gray-600 */
         }
 
         .btn-primary {
-            @apply w-full p-3 bg-white text-black rounded-lg font-bold hover:bg-gray-200 transition-all shadow-[0_0_15px_rgba(255, 255, 255, 0.1)];
+            width: 100%;
+            padding: 0.75rem;
+            background-color: white;
+            color: black;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary:hover {
+            background-color: #e5e7eb;
+            /* bg-gray-200 */
         }
 
         .btn-secondary {
-            @apply px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-white border border-white/10 transition-all;
+            padding: 0.5rem 1rem;
+            background-color: #1f2937;
+            /* bg-gray-800 */
+            color: white;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #374151;
+            /* bg-gray-700 */
         }
     </style>
 </head>
