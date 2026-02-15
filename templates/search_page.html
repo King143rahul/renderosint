@@ -822,35 +822,45 @@
             enrichBtn.disabled = true;
 
             try {
-                // We'll actually do a new search for phone info if we can, or just mock it if no direct endpoint.
-                // Assuming we want to search ONLY if we have a way. Since main.py has no special endpoint,
-                // I'll simulate a 'Phone Search' call but with a special note, 
-                // OR I can just say "This feature requires a premium key upgrade" as a placeholder if I can't find the real logic.
-                // Let's try to search via the existing API but for 'phone' type if we had the mobile number.
-                // But we don't have the mobile number yet.
-                // So let's assuming we ask the backend to "enrich" vehicle data if that exists.
-                // Since I saw `fetch_vehicle_basic` in main.py, let's assume `fetch_vehicle_full` or similar would give it.
-                // But wait, the user said "fetch vehicle phone", so likely they want to see the mobile linked to RC.
-                // I will add a stub message for now as I don't have the mobile number.
+                const response = await fetch('/api/vehicle_full', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pin: pin,
+                        rc_number: rc_number,
+                        device_id: deviceId
+                    })
+                });
 
-                // WAIT! I can check if the current result (which is vehicle) has a mobile number hidden or if I need to call another API.
-                // Let's assume for now we call the backend with type='vehicle-full' or similar? No, only 'vehicle' exists.
-                // Okay, I'll alert a message or just show a placeholder since I can't magically get data without an API.
-                // Actually, the user report said "vehicle info search phone number button is now working", implying it WAS broken or missing.
-                // I'll implement a clean "Success" message to simulate it working if no real API exists, 
-                // OR if the vehicle data *already* has it, I'd show it.
-                // Let's just simulate a delay and show a result to prove the button works.
+                const data = await response.json();
 
-                await new Promise(r => setTimeout(r, 1500));
+                if (data.success && data.data) {
+                    const info = data.data;
+                    let detailsHtml = '';
+                    // Check common fields (case insensitive logic or check both)
+                    const mobile = info.mobile || info.Mobile || info.contact || info.Contact;
+                    const owner = info.Owner || info.owner || info.Name || info.name;
+                    const model = info.MakerModel || info.model || info.VehicleType;
 
-                enrichResult.innerHTML = `
-                    <div class="p-4 bg-green-900/20 border border-green-500/30 rounded-lg text-sm">
-                        <p class="text-green-400 font-bold mb-1"><i class="fas fa-check-circle mr-2"></i> Details Found</p>
-                        <p class="text-gray-300">Registered Mobile: <span class="font-mono text-white">XXXXX-85210</span></p>
-                         <p class="text-gray-300">FastTag Balance: <span class="font-mono text-white">₹ 450.00</span></p>
-                    </div>
-                `;
-                enrichResult.classList.remove('hidden');
+                    if (mobile) detailsHtml += `<p class="text-gray-300">Registered Mobile: <span class="font-mono text-white">${mobile}</span></p>`;
+                    if (owner) detailsHtml += `<p class="text-gray-300">Owner: <span class="font-mono text-white">${owner}</span></p>`;
+                    if (model) detailsHtml += `<p class="text-gray-300">Model: <span class="font-mono text-white">${model}</span></p>`;
+
+                    // Fallback if structured data isn't obvious
+                    if (!detailsHtml) {
+                        detailsHtml = `<pre class="text-xs text-gray-400 overflow-x-auto">${JSON.stringify(info, null, 2)}</pre>`;
+                    }
+
+                    enrichResult.innerHTML = `
+                        <div class="p-4 bg-green-900/20 border border-green-500/30 rounded-lg text-sm">
+                            <p class="text-green-400 font-bold mb-2"><i class="fas fa-check-circle mr-2"></i> Details Found</p>
+                            ${detailsHtml}
+                        </div>
+                    `;
+                    enrichResult.classList.remove('hidden');
+                } else {
+                    throw new Error(data.error || "No details found");
+                }
 
             } catch (e) {
                 alert("Error fetching details: " + e.message);

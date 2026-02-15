@@ -277,6 +277,15 @@ def fetch_vehicle_basic(rc_number):
         print(f"Vehicle Basic API Error: {e}")
         return None
 
+def fetch_vehicle_full(rc_number):
+    try:
+        url = f"{VEHICLE_API_FULL_URL}{rc_number}"
+        res = requests.get(url, timeout=20)
+        return res.json()
+    except Exception as e:
+        print(f"Vehicle Full API Error: {e}")
+        return None
+
 # --- New API Support (Aadhaar/GST) ---
 AADHAAR_INFO_API_URL = os.getenv("AADHAAR_INFO_API", "")
 AADHAAR_FAMILY_API_URL = os.getenv("AADHAAR_FAMILY_API", "")
@@ -473,6 +482,45 @@ def search():
     key_info = {"searches_left": key.get('limit_count', 10) - (searches_today + 1), "expiry_date": key.get('expiry') or "Never"}
     final_response = {**(api_data if isinstance(api_data, dict) else {"result": api_data}), "status": "success", "key_status": key_info, "dev": "RAHUL SHARMA"}
     return jsonify(final_response)
+
+@app.route('/api/vehicle_full', methods=['POST'])
+def api_vehicle_full():
+    data = request.json or {}
+    pin = data.get('pin')
+    rc_number = data.get('rc_number')
+    device_id = data.get('device_id') or "unknown"
+    
+    if not pin or not rc_number:
+        return jsonify({"error": "PIN and RC Number required"}), 400
+        
+    # verify PIN
+    if KEYS_COLLECTION is None: return jsonify({"error": "DB Error"}), 500
+    key = KEYS_COLLECTION.find_one({"pin": pin})
+    if not key: return jsonify({"error": "Invalid API Key"}), 401
+    
+    # Check expiry
+    if key.get('expiry'):
+        if datetime.datetime.now().strftime("%Y-%m-%d") > key['expiry']:
+             return jsonify({"error": "API Key Expired"}), 403
+             
+    # Check Limit
+    today_start = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    searches_today = SEARCH_HISTORY_COLLECTION.count_documents({"pin": pin, "timestamp": {"$gte": today_start}})
+    
+    if searches_today >= key.get('limit_count', 10):
+        return jsonify({"error": "Daily limit exceeded"}), 429
+
+    # Fetch Data
+    api_res = fetch_vehicle_full(rc_number)
+    
+    if not api_res:
+         return jsonify({"error": "Failed to fetch details"}), 500
+         
+    # Log usage
+    log_search(pin, "vehicle-full", rc_number, device_id)
+    KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
+    
+    return jsonify({"success": True, "data": api_res})
 
 # ----------------------------------------------------------------- #
 # --- Admin Panel Routes ---
