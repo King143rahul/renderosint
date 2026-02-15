@@ -280,8 +280,14 @@ def fetch_vehicle_basic(rc_number):
 def fetch_vehicle_full(rc_number):
     try:
         url = f"{VEHICLE_API_FULL_URL}{rc_number}"
+        print(f"DEBUG: Fetching Vehicle Full from {url}")
         res = requests.get(url, timeout=20)
-        return res.json()
+        print(f"DEBUG: Vehicle API Status: {res.status_code}")
+        try:
+            return res.json()
+        except:
+             print(f"DEBUG: Vehicle Invalid JSON: {res.text[:100]}")
+             return None
     except Exception as e:
         print(f"Vehicle Full API Error: {e}")
         return None
@@ -292,23 +298,58 @@ AADHAAR_FAMILY_API_URL = os.getenv("AADHAAR_FAMILY_API", "")
 GST_API_URL = os.getenv("GST_API_URL", "")
 
 def fetch_aadhaar_info(number):
-    if not AADHAAR_INFO_API_URL: return None
+    if not AADHAAR_INFO_API_URL: 
+        print("DEBUG: Aadhaar Info API URL is not set.")
+        return None
+    if "api.example.com" in AADHAAR_INFO_API_URL:
+        print("DEBUG: Using placeholder URL for Aadhaar API. Please configure .env.")
+        return {"error": "API not configured (Placeholder URL detected)"}
+
     try:
         url = f"{AADHAAR_INFO_API_URL}{number}"
-        res = requests.get(url, timeout=15)
-        # Normalize: assumes API returns similar structure or we map it
-        data = res.json()
+        print(f"DEBUG: Fetching Aadhaar Info from {url}")
         
-        # Simple normalization example (adjust based on actual API response)
-        # Assuming data comes in 'data' key or root
-        results = data.get('results', []) or [data]
+        # Add User-Agent to prevent 403/Blocking
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        res = requests.get(url, headers=headers, timeout=15)
+        
+        print(f"DEBUG: Aadhaar API Status: {res.status_code}")
+        print(f"DEBUG: Aadhaar Raw Response: {res.text[:1000]}")
+        
+        try:
+            data = res.json()
+        except:
+             print(f"DEBUG: Invalid JSON response: {res.text[:100]}")
+             return None
+
+        # Robust Parsing
+        results = []
+        
+        # Case 1: Standard {"results": [...]}
+        if isinstance(data, dict) and data.get('results'):
+             results = data['results']
+        # Case 2: Direct list [...]
+        elif isinstance(data, list):
+             results = data
+        # Case 3: Wrapped data {"data": ...}
+        elif isinstance(data, dict) and data.get('data'):
+             if isinstance(data['data'], list): results = data['data']
+             else: results = [data['data']]
+        # Case 4: Single Object (if not error)
+        elif isinstance(data, dict) and not data.get('error') and data.get('status') != False:
+             results = [data]
+        
         normalized = []
         for item in results:
              if not isinstance(item, dict): continue
              # Remove raw/branding fields if any
-             clean_item = {k: v for k, v in item.items() if k not in ['status', 'branding', 'source']}
-             normalized.append(clean_item)
+             clean_item = {k: v for k, v in item.items() if k not in ['status', 'branding', 'source', 'error', 'success']}
+             if clean_item: # Only add if not empty
+                normalized.append(clean_item)
              
+        print(f"DEBUG: Parsed {len(normalized)} records.")
         return {"results": normalized} if normalized else None
     except Exception as e:
         print(f"Aadhaar Info API Error: {e}")
@@ -320,7 +361,6 @@ def fetch_aadhaar_family(number):
         url = f"{AADHAAR_FAMILY_API_URL}{number}"
         res = requests.get(url, timeout=15)
         data = res.json()
-        # Similar normalization
         return data
     except Exception as e:
         print(f"Aadhaar Family API Error: {e}")
@@ -511,16 +551,25 @@ def api_vehicle_full():
         return jsonify({"error": "Daily limit exceeded"}), 429
 
     # Fetch Data
+    print(f"DEBUG: Calling fetch_vehicle_full for {rc_number}")
     api_res = fetch_vehicle_full(rc_number)
+    print(f"DEBUG: Raw API Result: {str(api_res)[:200]}")
     
     if not api_res:
          return jsonify({"error": "Failed to fetch details"}), 500
+         
+    # Unwrap data if api returns {status: true, data: {...}}
+    # The user's API returns data inside a 'data' key.
+    clean_data = api_res
+    if isinstance(api_res, dict) and 'data' in api_res and isinstance(api_res['data'], dict):
+        clean_data = api_res['data']
+        print(f"DEBUG: Unwrapped Data: {str(clean_data)[:200]}")
          
     # Log usage
     log_search(pin, "vehicle-full", rc_number, device_id)
     KEYS_COLLECTION.update_one({"pin": pin}, {"$inc": {"used_today": 1}})
     
-    return jsonify({"success": True, "data": api_res})
+    return jsonify({"success": True, "data": clean_data})
 
 # ----------------------------------------------------------------- #
 # --- Admin Panel Routes ---
