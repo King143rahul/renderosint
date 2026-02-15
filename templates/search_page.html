@@ -298,6 +298,15 @@
             });
         }
 
+        // --- Load Saved Key on Start ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedPin = localStorage.getItem('osintApiKey');
+            if (savedPin) {
+                pinInput.value = savedPin;
+                savePinCheck.checked = true;
+            }
+        });
+
         searchBtn.addEventListener('click', performSearch);
         numberInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
         pinInput.addEventListener('keyup', (e) => e.key === 'Enter' && performSearch());
@@ -339,8 +348,13 @@
 
         async function performSearch() {
             let number = numberInput.value.trim();
+
+            // --- Input Sanitization ---
             if (SERVICE_TYPE === 'phone') {
                 number = number.replace(/\s+/g, '').replace(/^\+91/, '');
+            } else if (SERVICE_TYPE === 'aadhaar') {
+                // Remove dashes and spaces for API
+                number = number.replace(/[^0-9]/g, '');
             }
 
             const pin = pinInput.value.trim();
@@ -364,10 +378,13 @@
 
                 if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
 
-                if (result.status === 'success' && savePinCheck.checked) {
-                    localStorage.setItem('osintApiKey', pin);
-                } else if (!savePinCheck.checked) {
-                    localStorage.removeItem('osintApiKey');
+                // Save or Remove Key based on checkbox
+                if (result.status === 'success') {
+                    if (savePinCheck.checked) {
+                        localStorage.setItem('osintApiKey', pin);
+                    } else {
+                        localStorage.removeItem('osintApiKey');
+                    }
                 }
 
                 displayResults(result);
@@ -717,17 +734,28 @@
                     return;
                 }
 
-                // Process 3 items per frame to keep UI smooth
-                const chunkSize = 3;
-                for (let i = 0; i < chunkSize && renderQueue.length > 0; i++) {
-                    const task = renderQueue.shift();
-                    task();
+                // Process 1 item per frame to ensure maximum UI responsiveness
+                // This is critical for preventing "Black Screen" on low-end devices or large datasets
+                const chunkSize = 1;
+
+                try {
+                    for (let i = 0; i < chunkSize && renderQueue.length > 0; i++) {
+                        const task = renderQueue.shift();
+                        if (task) task();
+                    }
+                } catch (e) {
+                    console.error("Render Error:", e);
                 }
 
-                requestAnimationFrame(processQueue);
+                if (renderQueue.length > 0) {
+                    requestAnimationFrame(processQueue);
+                } else {
+                    // Finalize / Cleanup if needed
+                }
             };
 
-            processQueue();
+            // Start queue
+            requestAnimationFrame(processQueue);
         }
 
 
